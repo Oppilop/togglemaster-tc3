@@ -1,0 +1,112 @@
+version: "3.9"
+
+services:
+  # Banco para auth/targeting
+  postgres-auth:
+    image: postgres:15
+    container_name: postgres-auth
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpass
+      POSTGRES_DB: authdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+
+  # Banco para flag-service
+  postgres-flag:
+    image: postgres:15
+    container_name: postgres-flag
+    environment:
+      POSTGRES_USER: flag
+      POSTGRES_PASSWORD: flagpass
+      POSTGRES_DB: flagdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_flag_data:/var/lib/postgresql/data
+
+  # Redis para evaluation-service
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  # DynamoDB Local para analytics-service
+  dynamodb-local:
+    image: amazon/dynamodb-local
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+
+  # Auth-service
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgres://admin:adminpass@postgres-auth:5432/authdb
+      MASTER_KEY: supersecret
+    depends_on:
+      - postgres-auth
+
+  # Targeting-service
+  targeting-service:
+    build: ./targeting-service
+    container_name: targeting-service
+    ports:
+      - "8002:8002"
+    environment:
+      DB_HOST: postgres-auth
+      DB_USER: admin
+      DB_PASSWORD: adminpass
+      DB_NAME: targetingdb
+    depends_on:
+      - postgres-auth
+
+  # Analytics-service
+  analytics-service:
+    build: ./analytics-service
+    container_name: analytics-service
+    ports:
+      - "8003:8003"
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+      AWS_REGION: us-east-1
+    depends_on:
+      - dynamodb-local
+
+  # Flag-service
+  flag-service:
+    build: ./flag-service
+    container_name: flag-service
+    ports:
+      - "8004:8004"
+    environment:
+      DB_HOST: postgres-flag
+      DB_USER: flag
+      DB_PASSWORD: flagpass
+      DB_NAME: flagdb
+    depends_on:
+      - postgres-flag
+
+  # Evaluation-service
+  evaluation-service:
+    build: ./evaluation-service
+    container_name: evaluation-service
+    ports:
+      - "8005:8005"
+    environment:
+      AWS_REGION: us-east-1
+      SQS_ENDPOINT: http://sqs-local:9324
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+
+volumes:
+  postgres_auth_data:
+  postgres_flag_data:
+
