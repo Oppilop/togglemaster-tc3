@@ -3,12 +3,9 @@ CREATE TABLE IF NOT EXISTS flags (
 
     -- 'name' é a chave de negócio única (ex: 'enable-new-checkout')
     name VARCHAR(100) UNIQUE NOT NULL, 
-    
     description TEXT,
-    
     -- Este é o 'kill switch' global. Se for false, a flag está desativada para todos.
     is_enabled BOOLEAN NOT NULL DEFAULT false,
-    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

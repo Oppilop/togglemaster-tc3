@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM golang:1.22 AS builder
+FROM golang:1.24.0 AS builder
 
 # Definir diretório de trabalho
 WORKDIR /app
@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Compilar o binário
-RUN go build -o auth-service .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o auth-service .
 
 # Stage 2: Runtime
 FROM alpine:3.19
@@ -22,14 +22,8 @@ WORKDIR /app
 # Copiar apenas o binário compilado
 COPY --from=builder /app/auth-service .
 
-# Variáveis de ambiente (ajuste conforme necessário)
-ENV DB_HOST=postgres-auth
-ENV DB_USER=auth
-ENV DB_PASSWORD=authpass
-ENV DB_NAME=authdb
-
 # Expor a porta
-EXPOSE 8080
+EXPOSE 8081
 
 # Comando de inicialização
 CMD ["./auth-service"]

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"github.com/joho/godotenv"
+	_ "github.com/jackc/pgx/v5/stdlib" // registra o driver pgx
 )
 
 // App struct (para injeção de dependência)

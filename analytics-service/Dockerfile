@@ -21,12 +21,8 @@ COPY --from=builder /root/.local /root/.local
 # Ajustar PATH para encontrar os pacotes instalados
 ENV PATH=/root/.local/bin:$PATH
 
-# Variáveis de ambiente (ajuste conforme necessário)
-ENV DYNAMODB_ENDPOINT=http://dynamodb-local:8000
-ENV AWS_REGION=us-east-1
-
 # Expor a porta
-EXPOSE 8003
+EXPOSE 8005
 
 # Comando de inicialização
 CMD ["python", "app.py"]

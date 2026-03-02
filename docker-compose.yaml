@@ -1,31 +1,42 @@
-version: "3.9"
-
 services:
-  # Banco para auth/targeting
+  # Banco para auth
   postgres-auth:
     image: postgres:15
     container_name: postgres-auth
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpass
-      POSTGRES_DB: authdb
+      POSTGRES_USER: ${AUTH_DB_USER}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+      POSTGRES_DB: ${AUTH_DB_NAME}
+    healthcheck: 
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER} -d ${AUTH_DB_NAME}"] 
+      interval: 5s 
+      timeout: 5s 
+      retries: 5
     ports:
       - "5432:5432"
     volumes:
       - postgres_auth_data:/var/lib/postgresql/data
+      - ./auth-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init_targetingdb.sql:/docker-entrypoint-initdb.d/init_targetingdb.sql
 
   # Banco para flag-service
   postgres-flag:
     image: postgres:15
     container_name: postgres-flag
     environment:
-      POSTGRES_USER: flag
-      POSTGRES_PASSWORD: flagpass
-      POSTGRES_DB: flagdb
+      POSTGRES_USER: ${FLAG_DB_USER}
+      POSTGRES_PASSWORD: ${FLAG_DB_PASSWORD}
+      POSTGRES_DB: ${FLAG_DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FLAG_DB_USER} -d ${FLAG_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - "5433:5432"
     volumes:
       - postgres_flag_data:/var/lib/postgresql/data
+      - ./flag-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   # Redis para evaluation-service
   redis:
@@ -33,78 +44,125 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+    healthcheck: 
+      test: ["CMD", "redis-cli", "ping"] 
+      interval: 10s 
+      timeout: 5s 
+      retries: 3
 
   # DynamoDB Local para analytics-service
-  dynamodb-local:
+  dynamodb:
     image: amazon/dynamodb-local
-    container_name: dynamodb-local
+    container_name: dynamodb
     ports:
       - "8000:8000"
+    healthcheck: 
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"] 
+      interval: 10s 
+      timeout: 5s 
+      retries: 3 
 
   # Auth-service
   auth-service:
     build: ./auth-service
+    env_file: 
+      - .env  
     container_name: auth-service
     ports:
       - "8001:8001"
     environment:
-      DATABASE_URL: postgres://admin:adminpass@postgres-auth:5432/authdb
-      MASTER_KEY: supersecret
+      DATABASE_URL: ${AUTH_DATABASE_URL}
+      MASTER_KEY: ${AUTH_MASTER_KEY}
     depends_on:
-      - postgres-auth
-
-  # Targeting-service
-  targeting-service:
-    build: ./targeting-service
-    container_name: targeting-service
-    ports:
-      - "8002:8002"
-    environment:
-      DB_HOST: postgres-auth
-      DB_USER: admin
-      DB_PASSWORD: adminpass
-      DB_NAME: targetingdb
-    depends_on:
-      - postgres-auth
-
-  # Analytics-service
-  analytics-service:
-    build: ./analytics-service
-    container_name: analytics-service
-    ports:
-      - "8003:8003"
-    environment:
-      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
-      AWS_REGION: us-east-1
-    depends_on:
-      - dynamodb-local
+      postgres-auth:
+          condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Flag-service
   flag-service:
     build: ./flag-service
     container_name: flag-service
     ports:
-      - "8004:8004"
+      - "8002:8002"
     environment:
-      DB_HOST: postgres-flag
-      DB_USER: flag
-      DB_PASSWORD: flagpass
-      DB_NAME: flagdb
+      DATABASE_URL: ${FLAG_DATABASE_URL}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
     depends_on:
-      - postgres-flag
+      postgres-flag:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Targeting-service
+  targeting-service:
+    build: ./targeting-service
+    container_name: targeting-service
+    ports:
+      - "8003:8003"
+    environment:
+      DATABASE_URL: ${TARGETING_DATABASE_URL}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+    depends_on:
+      postgres-auth:
+          condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Evaluation-service
   evaluation-service:
     build: ./evaluation-service
     container_name: evaluation-service
     ports:
-      - "8005:8005"
+      - "8004:8004"
     environment:
-      AWS_REGION: us-east-1
-      SQS_ENDPOINT: http://sqs-local:9324
-      REDIS_URL: redis://redis:6379
+      AWS_REGION: ${AWS_REGION}
+      SQS_ENDPOINT: ${AWS_SQS_URL}
+      REDIS_URL: ${REDIS_URL}
+      FLAG_SERVICE_URL: ${FLAG_SERVICE_URL}
+      TARGETING_SERVICE_URL: ${TARGETING_SERVICE_URL}
     depends_on:
       - redis
+    healthcheck:
+      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8004/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Analytics-service
+  analytics-service:
+    build: ./analytics-service
+    container_name: analytics-service
+    ports:
+      - "8005:8005"
+    environment:
+      AWS_REGION: ${AWS_REGION}
+      AWS_SQS_URL: ${AWS_SQS_URL}
+      AWS_DYNAMODB_TABLE: ${AWS_DYNAMODB_TABLE}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+    depends_on:
+      - dynamodb
+    healthcheck:
+      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8005/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   postgres_auth_data:

@@ -21,12 +21,8 @@ WORKDIR /app
 # Copiar binário do builder
 COPY --from=builder /app/evaluation-service .
 
-# Variáveis de ambiente (ajuste conforme necessário)
-ENV AWS_REGION=us-east-1
-ENV SQS_ENDPOINT=http://sqs-local:9324
-
 # Expor a porta
-EXPOSE 8005
+EXPOSE 8004
 
 # Comando de inicialização
 CMD ["./evaluation-service"]

@@ -21,14 +21,8 @@ COPY --from=builder /root/.local /root/.local
 # Ajustar PATH para encontrar os pacotes instalados
 ENV PATH=/root/.local/bin:$PATH
 
-# Variáveis de ambiente (ajuste conforme necessário)
-ENV DB_HOST=postgres-targeting
-ENV DB_USER=targeting
-ENV DB_PASSWORD=targetingpass
-ENV DB_NAME=targetingdb
-
 # Expor a porta
-EXPOSE 8002
+EXPOSE 8003
 
 # Comando de inicialização
 CMD ["python", "app.py"]
