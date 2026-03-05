@@ -62,7 +62,7 @@ func main() {
 	}
 
 	// --- Inicializa Clientes ---
-	
+
 	// Cliente Redis
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -77,7 +77,19 @@ func main() {
 	// Cliente SQS (AWS SDK)
 	var sqsSvc *sqs.SQS
 	if sqsQueueURL != "" {
-		sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
+		localstackEndpoint := os.Getenv("LOCALSTACK_ENDPOINT")
+
+		awsCfg := &aws.Config{
+			Region: aws.String(awsRegion),
+		}
+
+		if localstackEndpoint != "" {
+			awsCfg.Endpoint = aws.String(localstackEndpoint)
+			awsCfg.S3ForcePathStyle = aws.Bool(true)
+			log.Printf("SQS configurado para LocalStack: %s", localstackEndpoint)
+		}
+
+		sess, err := session.NewSession(awsCfg)
 		if err != nil {
 			log.Fatalf("Não foi possível criar sessão AWS: %v", err)
 		}

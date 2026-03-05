@@ -17,7 +17,28 @@ services:
     volumes:
       - postgres_auth_data:/var/lib/postgresql/data
       - ./auth-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./init_targetingdb.sql:/docker-entrypoint-initdb.d/init_targetingdb.sql
+    networks:
+      - togglemaster
+
+  postgres-targeting:
+    image: postgres:15
+    container_name: postgres-targeting
+    environment:
+      POSTGRES_USER: ${TARGETING_DB_USER}
+      POSTGRES_PASSWORD: ${TARGETING_DB_PASSWORD}
+      POSTGRES_DB: ${TARGETING_DB_NAME}
+    healthcheck: 
+      test: ["CMD-SHELL", "pg_isready -U ${TARGETING_DB_USER} -d ${TARGETING_DB_NAME}"] 
+      interval: 5s 
+      timeout: 5s 
+      retries: 5
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_targeting_data:/var/lib/postgresql/data
+      - ./targeting-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - togglemaster
 
   # Banco para flag-service
   postgres-flag:
@@ -37,6 +58,8 @@ services:
     volumes:
       - postgres_flag_data:/var/lib/postgresql/data
       - ./flag-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - togglemaster
 
   # Redis para evaluation-service
   redis:
@@ -49,18 +72,48 @@ services:
       interval: 10s 
       timeout: 5s 
       retries: 3
+    networks:
+      - togglemaster
 
-  # DynamoDB Local para analytics-service
-  dynamodb:
-    image: amazon/dynamodb-local
-    container_name: dynamodb
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
     ports:
-      - "8000:8000"
-    healthcheck: 
-      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"] 
-      interval: 10s 
-      timeout: 5s 
-      retries: 3 
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs,dynamodb
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=${AWS_REGION}
+      - EDGE_PORT=4566
+      - AWS_SQS_URL=${AWS_SQS_URL}
+      - HOSTNAME_EXTERNAL=localstack
+    volumes:
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - togglemaster
+
+  aws-cli-init:
+    image: amazon/aws-cli:latest
+    container_name: aws-cli-init
+    depends_on:
+      localstack:
+        condition: service_healthy
+    volumes:
+      - ./localstack/init-aws.sh:/init-aws.sh
+    entrypoint: ["/bin/sh", "/init-aws.sh"]
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    restart: "no"
+    networks:
+      - togglemaster
+
 
   # Auth-service
   auth-service:
@@ -77,11 +130,13 @@ services:
       postgres-auth:
           condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8001/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8001/health"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 30s
+    networks:
+      - togglemaster
 
   # Flag-service
   flag-service:
@@ -96,11 +151,13 @@ services:
       postgres-flag:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8002/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
+    networks:
+      - togglemaster
 
   # Targeting-service
   targeting-service:
@@ -112,14 +169,16 @@ services:
       DATABASE_URL: ${TARGETING_DATABASE_URL}
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
     depends_on:
-      postgres-auth:
+      postgres-targeting:
           condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8003/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
+    networks:
+      - togglemaster
 
   # Evaluation-service
   evaluation-service:
@@ -129,18 +188,24 @@ services:
       - "8004:8004"
     environment:
       AWS_REGION: ${AWS_REGION}
-      SQS_ENDPOINT: ${AWS_SQS_URL}
+      AWS_SQS_URL: ${AWS_SQS_URL}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      LOCALSTACK_ENDPOINT: ${LOCALSTACK_ENDPOINT}
       REDIS_URL: ${REDIS_URL}
       FLAG_SERVICE_URL: ${FLAG_SERVICE_URL}
       TARGETING_SERVICE_URL: ${TARGETING_SERVICE_URL}
+      SERVICE_API_KEY: ${SERVICE_API_KEY}
     depends_on:
       - redis
     healthcheck:
-      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8004/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8004/health"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 30s
+    networks:
+      - togglemaster
 
   # Analytics-service
   analytics-service:
@@ -154,17 +219,27 @@ services:
       AWS_DYNAMODB_TABLE: ${AWS_DYNAMODB_TABLE}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+      LOCALSTACK_ENDPOINT: ${LOCALSTACK_ENDPOINT}
     depends_on:
-      - dynamodb
+      localstack:
+        condition: service_healthy
+      aws-cli-init:
+        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "wget", "--np-verbose", "--tries=1", "--spider", "http://localhost:8005/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8005/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
+    networks:
+      - togglemaster
 
 volumes:
   postgres_auth_data:
   postgres_flag_data:
+  postgres_targeting_data:
+  localstack_data:
 
+networks:
+  togglemaster:
+    driver: bridge
