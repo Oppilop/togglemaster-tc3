@@ -1,0 +1,20 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: togglemaster-eks-prod
+  region: us-east-1
+  version: "1.31"
+
+iam:
+  serviceRoleARN: "arn:aws:iam::<id>:role/LabRole"
+
+managedNodeGroups:
+  - name: standard-nodes
+    instanceType: t3.medium
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 3
+    volumeSize: 20
+    iam:
+      instanceRoleARN: "arn:aws:iam::<id>:role/LabRole"

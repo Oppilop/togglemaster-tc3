@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: targeting-service
+  namespace: targeting-namespace
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: targeting-service
+  template:
+    metadata:
+      labels:
+        app: targeting-service
+    spec:
+      containers:
+        - name: targeting-service
+          image: <ECR_REPO>/targeting-service:latest
+          ports:
+            - containerPort: <>
+          envFrom:
+            - secretRef:
+                name: targeting-service-secrets
+            - configMapRef:
+                name: targeting-service-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: targeting-service
+  namespace: targeting-namespace
+spec:
+  type: ClusterIP
+  selector:
+    app: targeting-service
+  ports:
+    - port: <>
+      targetPort: <>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: targeting-service-secrets
+  namespace: targeting-namespace
+type: Opaque
+stringData:
+  TARGETING_DB_PASSWORD: "targetingpass"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: targeting-service-config
+  namespace: targeting-namespace
+data:
+  TARGETING_DB_USER: "targeting"
+  TARGETING_DB_NAME: "targetingdb"
+  TARGETING_DATABASE_URL: "postgres://targeting:targetingpass@postgres-targeting:5432/targetingdb"
+  TARGETING_PORT: "8003"
+  TARGETING_SERVICE_URL: "http://targeting-service:8003"

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evaluation-service
+  namespace: evaluation-namespace
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: evaluation-service
+  template:
+    metadata:
+      labels:
+        app: evaluation-service
+    spec:
+      containers:
+        - name: evaluation-service
+          image: <ECR_REPO>/evaluation-service:latest
+          ports:
+            - containerPort: <>
+          envFrom:
+            - secretRef:
+                name: evaluation-service-secrets
+            - configMapRef:
+                name: evaluation-service-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: evaluation-service
+  namespace: evaluation-namespace
+spec:
+  type: ClusterIP
+  selector:
+    app: evaluation-service
+  ports:
+    - port: <>
+      targetPort: <>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: evaluation-service-secrets
+  namespace: evaluation-namespace
+type: Opaque
+stringData:
+  SERVICE_API_KEY: "tm_key_3c93c45c30f0c3d3290c136cdc6ec97669ad37d232572debeec8d6dcd18ccaa1"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: evaluation-service-config
+  namespace: evaluation-namespace
+data:
+  EVALUATION_PORT: "8004"
+  AUTH_SERVICE_URL: "http://auth-service:8001"
+  FLAG_SERVICE_URL: "http://flag-service:8002"
+  TARGETING_SERVICE_URL: "http://targeting-service:8003"

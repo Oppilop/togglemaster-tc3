@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flag-service
+  namespace: flag-namespace
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flag-service
+  template:
+    metadata:
+      labels:
+        app: flag-service
+    spec:
+      containers:
+        - name: flag-service
+          image: <ECR_REPO>/flag-service:latest
+          ports:
+            - containerPort: <>
+          envFrom:
+            - secretRef:
+                name: flag-service-secrets
+            - configMapRef:
+                name: flag-service-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flag-service
+  namespace: flag-namespace
+spec:
+  type: ClusterIP
+  selector:
+    app: flag-service
+  ports:
+    - port: <>
+      targetPort: <>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: flag-service-secrets
+  namespace: flag-namespace
+type: Opaque
+stringData:
+  FLAG_DB_PASSWORD: "flagpass"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flag-service-config
+  namespace: flag-namespace
+data:
+  FLAG_DB_HOST: "postgres-flag"
+  FLAG_DB_USER: "flag"
+  FLAG_DB_NAME: "flagdb"
+  FLAG_DATABASE_URL: "postgres://flag:flagpass@postgres-flag:5432/flagdb"
+  FLAG_PORT: "8002"
+  FLAG_SERVICE_URL: "http://flag-service:8002"

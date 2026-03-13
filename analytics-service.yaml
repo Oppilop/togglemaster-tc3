@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+  namespace: analytics-namespace
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+        - name: analytics-service
+          image: <ECR_REPO>/analytics-service:latest
+          ports:
+            - containerPort: <>
+          envFrom:
+            - secretRef:
+                name: analytics-service-secrets
+            - configMapRef:
+                name: analytics-service-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: analytics-namespace
+spec:
+  type: ClusterIP
+  selector:
+    app: analytics-service
+  ports:
+    - port: <>
+      targetPort: <>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: analytics-service-secrets
+  namespace: analytics-namespace
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "test"
+  AWS_SECRET_ACCESS_KEY: "test"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: analytics-service-config
+  namespace: analytics-namespace
+data:
+  ANALYTICS_PORT: "8005"
+  AWS_REGION: "us-east-1"
+  REDIS_URL: "redis://redis:6379"
+  AWS_SQS_URL: "http://localstack:4566/000000000000/analytics-queue"
+  LOCALSTACK_ENDPOINT: "http://localstack:4566"
+  AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
