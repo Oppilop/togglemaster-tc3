@@ -15,9 +15,9 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: <ECR_REPO>/auth-service:latest
+          image: 471112729436.dkr.ecr.us-east-1.amazonaws.com/analytics-service
           ports:
-            - containerPort: <>
+            - containerPort: 8001
           envFrom:
             - secretRef:
                 name: auth-service-secrets
@@ -34,18 +34,18 @@ spec:
   selector:
     app: auth-service
   ports:
-    - port: <>
-      targetPort: <>
+    - port: 8001
+      targetPort: 8001
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  AUTH_MASTER_KEY: "admin-secreto-123"
+  AUTH_MASTER_KEY: "KDFjnd$jfd2@fdjgj2fgdg"
   AUTH_DB_PASSWORD: "adminpass"
 type: Opaque
 stringData:
-  DB_PASSWORD: "supersecret"
-  JWT_SECRET: "jwtkey"
+  DB_PASSWORD: "(4JbeURfvtB.hI5Yw~5Wzc.qegqB"
+  USER: "postgres"
 ---
 apiVersion: v1
 kind: ConfigMap
