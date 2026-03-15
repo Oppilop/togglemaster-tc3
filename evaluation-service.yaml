@@ -17,7 +17,7 @@ spec:
         - name: evaluation-service
           image: <ECR_REPO>/evaluation-service:latest
           ports:
-            - containerPort: <>
+            - containerPort: 8004
           envFrom:
             - secretRef:
                 name: evaluation-service-secrets
@@ -34,8 +34,8 @@ spec:
   selector:
     app: evaluation-service
   ports:
-    - port: <>
-      targetPort: <>
+    - port: 8004
+      targetPort: 8004
 ---
 apiVersion: v1
 kind: Secret

@@ -15,9 +15,9 @@ spec:
     spec:
       containers:
         - name: analytics-service
-          image: <ECR_REPO>/analytics-service:latest
+          image: 471112729436.dkr.ecr.us-east-1.amazonaws.com/analytics-service
           ports:
-            - containerPort: <>
+            - containerPort: 8005
           envFrom:
             - secretRef:
                 name: analytics-service-secrets
@@ -34,8 +34,8 @@ spec:
   selector:
     app: analytics-service
   ports:
-    - port: <>
-      targetPort: <>
+    - port: 8005
+      targetPort: 8005
 ---
 apiVersion: v1
 kind: Secret

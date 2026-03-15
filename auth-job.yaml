@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-postgres-init
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: auth-postgres-init-sql
+        image: postgres:latest
+        command: ["psql"]
+        args: ["-h", "auth-postgres.czemuyq424d3.us-east-1.rds.amazonaws.com", "-U", "postgres","-d", "authdb", "-f", "/mnt/init.sql"]
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: auth-postgres-init-secret
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: init-sql
+          mountPath: /mnt
+      volumes:
+      - name: init-sql
+        configMap:
+          name: auth-postgres-init-configmap
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-postgres-init-secret
+type: Opaque
+data:
+  DB_PASSWORD: UykqY0NPTnBjVGI6ISk3SUlDal9UNXQ1NTFJMA==
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-postgres-init-configmap
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS api_keys (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        key_hash VARCHAR(64) NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );

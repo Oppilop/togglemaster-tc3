@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: 471112729436.dkr.ecr.us-east-1.amazonaws.com/analytics-service
+          image: 471112729436.dkr.ecr.us-east-1.amazonaws.com/auth-service
           ports:
             - containerPort: 8001
           envFrom:
@@ -27,7 +27,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: auth-service
+  name: auth-service    
   namespace: auth-namespace
 spec:
   type: ClusterIP
@@ -40,12 +40,12 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  AUTH_MASTER_KEY: "KDFjnd$jfd2@fdjgj2fgdg"
-  AUTH_DB_PASSWORD: "adminpass"
+  name: auth-service-secrets
+  namespace: auth-namespace
 type: Opaque
-stringData:
-  DB_PASSWORD: "(4JbeURfvtB.hI5Yw~5Wzc.qegqB"
-  USER: "postgres"
+data:
+  DB_PASSWORD: UykqY0NPTnBjVGI6ISk3SUlDal9UNXQ1NTFJMA==
+  MASTER_KEY: S0RGam5kQGZkamdqMmZnZGc=
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -53,8 +53,25 @@ metadata:
   name: auth-service-config
   namespace: auth-namespace
 data:
-  AUTH_DATABASE_URL: "postgres://admin:adminpass@postgres-auth:5432/authdb"
-  AUTH_DB_HOST: "postgres-auth"
-  AUTH_DB_USER: "admin"
-  AUTH_DB_NAME: "authdb"
-  AUTH_SERVICE_URL: "http://auth-service:8001"
+  DATABASE_URL: "postgres://postgres:S%29%2AcCONpcTb%3A%21%297IICj_T5t551I0@auth-postgres.czemuyq424d3.us-east-1.rds.amazonaws.com:5432/authdb"
+  SERVICE_URL: "http://auth-service:8001"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-service-ingress
+  namespace: auth-namespace
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /auth(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8001  

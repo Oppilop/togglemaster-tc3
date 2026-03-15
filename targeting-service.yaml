@@ -15,9 +15,9 @@ spec:
     spec:
       containers:
         - name: targeting-service
-          image: <ECR_REPO>/targeting-service:latest
+          image: 471112729436.dkr.ecr.us-east-1.amazonaws.com/targeting-service
           ports:
-            - containerPort: <>
+            - containerPort: 8003
           envFrom:
             - secretRef:
                 name: targeting-service-secrets
@@ -34,8 +34,8 @@ spec:
   selector:
     app: targeting-service
   ports:
-    - port: <>
-      targetPort: <>
+    - port: 8003
+      targetPort: 8003
 ---
 apiVersion: v1
 kind: Secret
@@ -43,8 +43,8 @@ metadata:
   name: targeting-service-secrets
   namespace: targeting-namespace
 type: Opaque
-stringData:
-  TARGETING_DB_PASSWORD: "targetingpass"
+data:
+  DB_PASSWORD: LWVFLUpNNCpQQWxbKmZ2MGx3NTRRIU9OPE1mKg==
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -52,8 +52,25 @@ metadata:
   name: targeting-service-config
   namespace: targeting-namespace
 data:
-  TARGETING_DB_USER: "targeting"
-  TARGETING_DB_NAME: "targetingdb"
-  TARGETING_DATABASE_URL: "postgres://targeting:targetingpass@postgres-targeting:5432/targetingdb"
-  TARGETING_PORT: "8003"
-  TARGETING_SERVICE_URL: "http://targeting-service:8003"
+  DATABASE_URL: "postgres://postgres:-eE-JM4%2APAl%5B%2Afv0lw54Q%21ON%3CMf%2A@targeting-postgres.czemuyq424d3.us-east-1.rds.amazonaws.com:5432/targetingdb"
+  AUTH_SERVICE_URL:  "http://auth-service.auth-namespace.svc.cluster.local:8001"
+  PORT: "8003"
+  SERVICE_URL: "http://targeting-service:8003"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: targeting-service-ingress
+  namespace: targeting-namespace
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /targeting
+            pathType: Prefix
+            backend:
+              service:
+                name: targeting-service
+                port:
+                  number: 8003
