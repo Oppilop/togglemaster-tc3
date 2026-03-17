@@ -52,10 +52,10 @@ metadata:
   name: targeting-service-config
   namespace: targeting-namespace
 data:
-  DATABASE_URL: "postgres://postgres:\#jceEC12\~-_5ZKuJq-J?BbU\(m\(WJ@targeting-postgres.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/targetingdb"
+  DATABASE_URL: "postgres://postgres:fmwvWo:e\|\<XSE7FLRsx\*wo\[LGw\*z@potsgres-targeting.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/targetingdb"
   AUTH_SERVICE_URL:  "http://auth-service.auth-namespace.svc.cluster.local:8001"
+  FLAG_SERVICE_URL: "http://flag-service.flag-namespace.svc.cluster.local:8002"
   PORT: "8003"
-  SERVICE_URL: "http://targeting-service:8003"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

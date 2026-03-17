@@ -54,7 +54,6 @@ metadata:
   namespace: auth-namespace
 data:
   DATABASE_URL: "postgres://postgres:6JjyyPL\<lsqk\|Z*dAx-JOu\|En6fk@auth-postgres.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/authdb"
-  SERVICE_URL: "http://auth-service:8001"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

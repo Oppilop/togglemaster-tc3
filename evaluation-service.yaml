@@ -53,6 +53,6 @@ metadata:
   namespace: evaluation-namespace
 data:
   EVALUATION_PORT: "8004"
-  AUTH_SERVICE_URL: "http://auth-service:8001"
-  FLAG_SERVICE_URL: "http://flag-service:8002"
-  TARGETING_SERVICE_URL: "http://targeting-service:8003"
+  AUTH_SERVICE_URL: "http://auth-service.auth-namespace.svc.cluster.local:8001"
+  FLAG_SERVICE_URL: "http://flag-service.flag-namespace.svc.cluster.local:8002"
+  TARGETING_SERVICE_URL: "http://targeting-service.targeting-namespace.svc.cluster.local:8003"

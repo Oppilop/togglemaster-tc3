@@ -55,7 +55,6 @@ data:
   DATABASE_URL: "postgres://postgres:i3T\>9SRX1O-\$O\#\(ad\(L1aVSUj1PS@flag-postgres.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/flagdb"
   AUTH_SERVICE_URL:  "http://auth-service.auth-namespace.svc.cluster.local:8001"
   PORT: "8002"
-  SERVICE_URL: "http://flag-service:8002"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
