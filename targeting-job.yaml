@@ -10,7 +10,7 @@ spec:
       - name: targeting-postgres-init-sql
         image: postgres:latest
         command: ["psql"]
-        args: ["-h", "postgres-targeting.cpuaso8oc4w8.us-east-1.rds.amazonaws.com", "-U", "postgres", "-d", "targetingdb", "-f", "/mnt/init.sql"]
+        args: ["-h", "potsgres-targeting.cpuaso8oc4w8.us-east-1.rds.amazonaws.com", "-U", "postgres", "-d", "targetingdb", "-f", "/mnt/init.sql"]
         env:
         - name: PGPASSWORD
           valueFrom:
@@ -31,7 +31,7 @@ metadata:
   name: targeting-postgres-init-secret
 type: Opaque
 data:
-  DB_PASSWORD: aUlFfCp0KVEzKEczS0hvWzVvSnllMDpsSjBrYg==
+  DB_PASSWORD: Zm13dldvOmV8PFhTRTdGTFJzeCp3b1tMR3cqeg==
 ---
 apiVersion: v1
 kind: ConfigMap

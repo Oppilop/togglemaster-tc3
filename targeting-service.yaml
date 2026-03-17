@@ -44,7 +44,7 @@ metadata:
   namespace: targeting-namespace
 type: Opaque
 data:
-  DB_PASSWORD: aUlFfCp0KVEzKEczS0hvWzVvSnllMDpsSjBrYg==
+  DB_PASSWORD: Zm13dldvOmV8PFhTRTdGTFJzeCp3b1tMR3cqeg==
 ---
 apiVersion: v1
 kind: ConfigMap
