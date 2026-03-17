@@ -44,7 +44,7 @@ metadata:
   namespace: targeting-namespace
 type: Opaque
 data:
-  DB_PASSWORD: LWVFLUpNNCpQQWxbKmZ2MGx3NTRRIU9OPE1mKg==
+  DB_PASSWORD: I2pjZUVDMTJ+LV81Wkt1SnEtSj9CYlUobShXSg==
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -52,7 +52,7 @@ metadata:
   name: targeting-service-config
   namespace: targeting-namespace
 data:
-  DATABASE_URL: "postgres://postgres:-eE-JM4%2APAl%5B%2Afv0lw54Q%21ON%3CMf%2A@targeting-postgres.czemuyq424d3.us-east-1.rds.amazonaws.com:5432/targetingdb"
+  DATABASE_URL: "postgres://postgres:\#jceEC12\~-_5ZKuJq-J?BbU\(m\(WJ@targeting-postgres.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/targetingdb"
   AUTH_SERVICE_URL:  "http://auth-service.auth-namespace.svc.cluster.local:8001"
   PORT: "8003"
   SERVICE_URL: "http://targeting-service:8003"

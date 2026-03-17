@@ -44,7 +44,7 @@ metadata:
   namespace: flag-namespace
 type: Opaque
 data:
-  DB_PASSWORD: UjVFR10xJEJIKHY5JGhZazlHWyk6WFBkPkNwPw==
+  DB_PASSWORD: aTNUPjlTUlgxTy0kTyMoYWQoTDFhVlNVajFQUw==
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -52,7 +52,7 @@ metadata:
   name: flag-service-config
   namespace: flag-namespace
 data:
-  DATABASE_URL: "postgres://postgres:R5EG%5D1%24BH%28v9%24hYk9G%5B%29%3AXPd%3ECp%3F@flag-postgres.czemuyq424d3.us-east-1.rds.amazonaws.com:5432/flagdb"
+  DATABASE_URL: "postgres://postgres:i3T\>9SRX1O-\$O\#\(ad\(L1aVSUj1PS@flag-postgres.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/flagdb"
   AUTH_SERVICE_URL:  "http://auth-service.auth-namespace.svc.cluster.local:8001"
   PORT: "8002"
   SERVICE_URL: "http://flag-service:8002"

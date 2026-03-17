@@ -44,8 +44,8 @@ metadata:
   namespace: analytics-namespace
 type: Opaque
 stringData:
-  AWS_ACCESS_KEY_ID: "ASIAW3MEBYNOG4QTX4RU"
-  AWS_SECRET_ACCESS_KEY: "EDFvZYHiPBelwntXpuBwhOeAYJT8k722jVM8EYs1"
+  AWS_ACCESS_KEY_ID: "ASIASZFDPSD7MLHLRMYS"
+  AWS_SECRET_ACCESS_KEY: "OQ+BU8z3jkuv7KowUFEpY9dlGyzNiwSt8/70mLw9"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -55,6 +55,6 @@ metadata:
 data:
   ANALYTICS_PORT: "8005"
   AWS_REGION: "us-east-1"
-  REDIS_URL: "redis-evaluation.lohxif.cfg.use1.cache.amazonaws.com:11211"
-  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/471112729436/sqs-service"
+  REDIS_URL: "togglemaster-redis-prod.n7s9nu.cfg.use1.cache.amazonaws.com:11211"
+  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/191468900606/togglemaster-sqs-prod"
   AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"

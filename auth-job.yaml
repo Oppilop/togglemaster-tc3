@@ -10,7 +10,7 @@ spec:
       - name: auth-postgres-init-sql
         image: postgres:latest
         command: ["psql"]
-        args: ["-h", "auth-postgres.czemuyq424d3.us-east-1.rds.amazonaws.com", "-U", "postgres","-d", "authdb", "-f", "/mnt/init.sql"]
+        args: ["-h", "postgres-auth.cpuaso8oc4w8.us-east-1.rds.amazonaws.com", "-U", "postgres","-d", "authdb", "-f", "/mnt/init.sql"]
         env:
         - name: PGPASSWORD
           valueFrom:
@@ -31,7 +31,7 @@ metadata:
   name: auth-postgres-init-secret
 type: Opaque
 data:
-  DB_PASSWORD: UykqY0NPTnBjVGI6ISk3SUlDal9UNXQ1NTFJMA==
+  DB_PASSWORD: PjQtYipvJDlGYlRkQ116UU1oNXVJV3hya2QhUQ==
 ---
 apiVersion: v1
 kind: ConfigMap
