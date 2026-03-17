@@ -10,7 +10,7 @@ spec:
       - name: flag-postgres-init-sql
         image: postgres:latest
         command: ["psql"]
-        args: ["-h", "flag-postgres.czemuyq424d3.us-east-1.rds.amazonaws.com", "-U", "postgres", "-d", "flagdb", "-f", "/mnt/init.sql"]
+        args: ["-h", "postgres-flag.cpuaso8oc4w8.us-east-1.rds.amazonaws.com", "-U", "postgres", "-d", "flagdb", "-f", "/mnt/init.sql"]
         env:
         - name: PGPASSWORD
           valueFrom:
@@ -31,7 +31,7 @@ metadata:
   name: flag-postgres-init-secret
 type: Opaque
 data:
-  DB_PASSWORD: UjVFR10xJEJIKHY5JGhZazlHWyk6WFBkPkNwPw==
+  DB_PASSWORD: N0lURmJsLlpxX1sxKDJUKkg5ZW1+LWlNOjdiOg==
 ---
 apiVersion: v1
 kind: ConfigMap

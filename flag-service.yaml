@@ -44,7 +44,7 @@ metadata:
   namespace: flag-namespace
 type: Opaque
 data:
-  DB_PASSWORD: aTNUPjlTUlgxTy0kTyMoYWQoTDFhVlNVajFQUw==
+  DB_PASSWORD: N0lURmJsLlpxX1sxKDJUKkg5ZW1+LWlNOjdiOg==
 ---
 apiVersion: v1
 kind: ConfigMap
