@@ -12,7 +12,6 @@ vpc:
       us-east-1d: { id: "subnet-02b26668600d351b5" }
       us-east-1c: { id: "subnet-0c2edf784031f75d2" }
     public:
-      us-east-1d: { id: "subnet-00163aa79ffc7284e" }
       us-east-1c: { id: "subnet-03881a4af8e6238a1" }
 iam:
   serviceRoleARN: "arn:aws:iam::191468900606:role/LabRole"
