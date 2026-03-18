@@ -52,7 +52,7 @@ metadata:
   name: targeting-service-config
   namespace: targeting-namespace
 data:
-  DATABASE_URL: "postgres://postgres:fmwvWo:e\|\<XSE7FLRsx\*wo\[LGw\*z@potsgres-targeting.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/targetingdb"
+  DATABASE_URL: "postgres://postgres:fmwvWo%3Ae%7C%3CXSE7FLRsx%2Awo%5BLGw%2Az@potsgres-targeting.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/targetingdb"
   AUTH_SERVICE_URL:  "http://auth-service.auth-namespace.svc.cluster.local:8001"
   FLAG_SERVICE_URL: "http://flag-service.flag-namespace.svc.cluster.local:8002"
   PORT: "8003"
