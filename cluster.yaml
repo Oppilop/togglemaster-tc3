@@ -6,7 +6,7 @@ metadata:
   region: us-east-1
   version: "1.31"
 vpc:
-  id: "vpc-0b45f905b09854000 "  # ID da sua VPC existente
+  id: "vpc-0b45f905b09854000"  # ID da sua VPC existente
   subnets:
     private:
       us-east-1d: { id: "subnet-02b26668600d351b5" }
