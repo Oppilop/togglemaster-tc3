@@ -52,7 +52,7 @@ metadata:
   name: flag-service-config
   namespace: flag-namespace
 data:
-  DATABASE_URL: "postgres://postgres:i3T%3E9SRX1O-%24O%23(ad(L1aVSUj1PS@flag-postgres.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/flagdb"
+  DATABASE_URL: "postgres://postgres:7ITFbl.Zq_%5B1(2T%2AH9em~-iM%3A7b%3A@postgres-flag.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/flagdb"
   AUTH_SERVICE_URL:  "http://auth-service.auth-namespace.svc.cluster.local:8001"
   PORT: "8002"
 ---
