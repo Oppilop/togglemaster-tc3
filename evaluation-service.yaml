@@ -56,7 +56,7 @@ data:
   AUTH_SERVICE_URL: "http://auth-service.auth-namespace.svc.cluster.local:8001"
   FLAG_SERVICE_URL: "http://flag-service.flag-namespace.svc.cluster.local:8002"
   TARGETING_SERVICE_URL: "http://targeting-service.targeting-namespace.svc.cluster.local:8003"
-  REDIS_URL: "clustercfg.togglemaster-redis-prod.n7s9nu.use1.cache.amazonaws.com:6379"
+  REDIS_URL: "redis://clustercfg.togglemaster-redis-prod.n7s9nu.use1.cache.amazonaws.com:6379"
   AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/191468900606/togglemaster-sqs-prod"
   AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
   AWS_REGION: "us-east-1"
