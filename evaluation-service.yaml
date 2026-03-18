@@ -59,3 +59,4 @@ data:
   REDIS_URL: "clustercfg.togglemaster-redis-prod.n7s9nu.use1.cache.amazonaws.com:6379"
   AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/191468900606/togglemaster-sqs-prod"
   AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
+  AWS_REGION: "us-east-1"
