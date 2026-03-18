@@ -5,10 +5,17 @@ metadata:
   name: togglemaster-eks-prod
   region: us-east-1
   version: "1.31"
-
+vpc:
+  id: "vpc-0b45f905b09854000 "  # ID da sua VPC existente
+  subnets:
+    private:
+      us-east-1d: { id: "subnet-02b26668600d351b5" }
+      us-east-1c: { id: "subnet-0c2edf784031f75d2" }
+    public:
+      us-east-1d: { id: "subnet-00163aa79ffc7284e" }
+      us-east-1c: { id: "subnet-03881a4af8e6238a1" }
 iam:
-  serviceRoleARN: "arn:aws:iam::<id>:role/LabRole"
-
+  serviceRoleARN: "arn:aws:iam::191468900606:role/LabRole"
 managedNodeGroups:
   - name: standard-nodes
     instanceType: t3.medium
@@ -17,4 +24,4 @@ managedNodeGroups:
     maxSize: 3
     volumeSize: 20
     iam:
-      instanceRoleARN: "arn:aws:iam::<id>:role/LabRole"
+      instanceRoleARN: "arn:aws:iam::191468900606:role/LabRole"
