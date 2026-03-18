@@ -3,10 +3,10 @@ CLUSTER_FILE=cluster.yaml
 REGION=us-east-1
 CLUSTER_NAME=togglemaster-eks-prod
 
-.PHONY: all setup-cluster apply-jobs apply-namespaces apply-services clean
+.PHONY: all setup-cluster apply-jobs apply-namespaces-db apply-namespaces apply-services clean
 
 # Comando principal que executa tudo na ordem
-all: setup-cluster apply-jobs apply-namespaces apply-services
+all: setup-cluster apply-jobs apply-namespaces-db apply-namespaces apply-services
 
 # 1. Criar o cluster do EKS
 setup-cluster:
@@ -21,8 +21,7 @@ apply-jobs:
 	kubectl apply -f targeting-job.yaml
 
 # 3. Aplicar os namespaces
-# Nota: Usei os arquivos de namespace baseados na sua lista
-apply-namespaces:
+apply-namespaces-db:
 	@echo "Criando Namespaces..."
 	kubectl apply -f auth-namespace.yaml
 	kubectl apply -f flag-namespace.yaml
@@ -31,13 +30,14 @@ apply-namespaces:
 	kubectl apply -f analytics-namespace.yaml
 
 # 4. Aplicar os services (Deployments/Services/Configs)
-apply-services:
-	@echo "Fazendo deploy dos microserviços..."
+apply-services-db:
+	@echo "Fazendo deploy dos microserviços db..."
 	kubectl apply -f auth-service.yaml
 	kubectl apply -f flag-service.yaml
 	kubectl apply -f targeting-service.yaml
+
+# 5. Aplicar os services (Deployments/Services/Configs)
+apply-services:
+	@echo "Fazendo deploy dos microserviços..."
 	kubectl apply -f evaluation-service.yaml
 	kubectl apply -f analytics-service.yaml
-
-	@echo "DELETANDO CLUSTER EKS..."
-	eksctl delete cluster -f $(CLUSTER_FILE)
