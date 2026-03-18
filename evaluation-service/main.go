@@ -68,7 +68,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Não foi possível parsear a URL do Redis: %v", err)
 	}
-	rdb := redis.NewClient(opt)
+	// rdb := redis.NewClient(opt)
+
+	// 2. Criar as opções de Cluster baseadas no Parse anterior
+	rdb := redis.NewClusterClient(&redis.ClusterOptions{
+    Addrs: []string{opt.Addr},
+
+	// Habilita o TLS (Obrigatório pois seu Redis está com 'Criptografia em trânsito')
+    TLSConfig: &tls.Config{
+        InsecureSkipVerify: true, // Ignora a validação do certificado da AWS na rede interna
+    },
+	})
+
 	if _, err := rdb.Ping(ctx).Result(); err != nil {
 		log.Fatalf("Não foi possível conectar ao Redis: %v", err)
 	}
