@@ -18,6 +18,13 @@ spec:
           image: 191468900606.dkr.ecr.us-east-1.amazonaws.com/evaluation-service
           ports:
             - containerPort: 8004
+          resources:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "400m"
+            memory: "512Mi"
           envFrom:
             - secretRef:
                 name: evaluation-service-secrets

@@ -18,6 +18,13 @@ spec:
           image: 191468900606.dkr.ecr.us-east-1.amazonaws.com/flag-repo
           ports:
             - containerPort: 8002
+          resources:
+          requests:
+            cpu: "100m"      # Reserva 10% de um núcleo
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
           envFrom:
             - secretRef:
                 name: flag-service-secrets
