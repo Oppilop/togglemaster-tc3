@@ -67,3 +67,23 @@ data:
   AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/191468900606/togglemaster-sqs-prod"
   AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
   AWS_REGION: "us-east-1"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: evaluation-service-ingress
+  namespace: auth-namespace
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /evaluation(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: evaluation-service
+                port:
+                  number: 8004
