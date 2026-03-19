@@ -19,13 +19,13 @@ spec:
           ports:
             - containerPort: 8005
           resources:
-          requests:
-            cpu: "250m"      # Reserva 1/4 de um núcleo
-            memory: "256Mi"  # Reserva 256MB de RAM
-          limits:
-            cpu: "500m"      # Pode usar até meio núcleo se precisar
-            memory: "512Mi"  # Teto de 512MB para não travar o nó
-          envFrom:
+            requests:
+              cpu: "250m"      # Reserva 1/4 de um núcleo
+              memory: "256Mi"  # Reserva 256MB de RAM
+            limits:
+              cpu: "500m"      # Pode usar até meio núcleo se precisar
+              memory: "512Mi"  # Teto de 512MB para não travar o nó
+            envFrom:
             - secretRef:
                 name: analytics-service-secrets
             - configMapRef:

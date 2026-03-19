@@ -19,12 +19,12 @@ spec:
           ports:
             - containerPort: 8003
           resources:
-          requests:
-            cpu: "150m"      # Reserva 15% de um núcleo
-            memory: "128Mi"  # Reserva 128MB de RAM
-          limits:
-            cpu: "300m"      # Teto de 30% de CPU
-            memory: "256Mi"  # Teto de 256MB de RAM
+            requests:
+              cpu: "150m"      # Reserva 15% de um núcleo
+              memory: "128Mi"  # Reserva 128MB de RAM
+            limits:
+              cpu: "300m"      # Teto de 30% de CPU
+              memory: "256Mi"  # Teto de 256MB de RAM
           envFrom:
             - secretRef:
                 name: targeting-service-secrets
