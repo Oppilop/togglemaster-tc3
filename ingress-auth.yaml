@@ -7,41 +7,40 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-    - host: fiap-tcs.local
       http:
         paths:
-          - path: /auth
-            pathType: Prefix
-            backend:
-              service:
-                name: auth-service
-                port:
-                  number: 
-          - path: /flags
-            pathType: Prefix
-            backend:
-              service:
-                name: flag-service
-                port:
-                  number: 
+          # - path: /auth
+          #   pathType: Prefix
+          #   backend:
+          #     service:
+          #       name: auth-service
+          #       port:
+          #         number: 
+          # - path: /flags
+          #   pathType: Prefix
+          #   backend:
+          #     service:
+          #       name: flag-service
+          #       port:
+          #         number: 
           - path: /evaluation
             pathType: Prefix
             backend:
               service:
                 name: evaluation-service
                 port:
-                  number: 
+                  number: 8004
           - path: /analytics
             pathType: Prefix
             backend:
               service:
                 name: analytics-service
                 port:
-                  number: 
-          - path: /targeting
-            pathType: Prefix
-            backend:
-              service:
-                name: targeting-service
-                port:
-                  number: 
+                  number: 8005
+          # - path: /targeting
+          #   pathType: Prefix
+          #   backend:
+          #     service:
+          #       name: targeting-service
+          #       port:
+          #         number: 
