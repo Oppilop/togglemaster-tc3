@@ -51,7 +51,7 @@ metadata:
   namespace: evaluation-namespace
 type: Opaque
 stringData:
-  SERVICE_API_KEY: "tm_key_4dc494b3ef361406512eee8ca195f7b6fcf912c64091ab06e5fbac4fb0bbf1a9"
+  SERVICE_API_KEY: "tm_key_8a341b94b3159f63dd750b4cd986f7d18b6da01e169fb2f6794058016d0edc39"
 ---
 apiVersion: v1
 kind: ConfigMap
