@@ -18,10 +18,3 @@ terraform {
     # O Terraform usará as credenciais que você exportar no terminal ou configurar no GitHub.
   }
 }
-
-provider "aws" {
-  region = "us-east-1"
-  
-  # Deixando este bloco vazio, o Terraform busca automaticamente 
-  # as variáveis de ambiente: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY e AWS_SESSION_TOKEN.
-}
