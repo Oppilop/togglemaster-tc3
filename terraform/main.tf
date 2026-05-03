@@ -54,7 +54,8 @@ data "aws_eks_cluster_auth" "cluster" {
 
 data "infisical_secrets" "db_secrets" {
   env_slug     = "dev"
-  workspace_id = "3d29296c-2d40-49a8-b604-183f887fd6e7" 
+  workspace_id = "3d29296c-2d40-49a8-b604-183f887fd6e7"
+  folder_path  = "/"
 }
 
 data "aws_iam_role" "labrole" {
