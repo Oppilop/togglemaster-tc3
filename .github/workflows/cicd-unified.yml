@@ -26,6 +26,7 @@ jobs:
       - name: Terraform Init & Apply
         env:
           INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
+          working-directory: ./terraform
         run: |
           terraform init
           terraform apply -auto-approve
