@@ -32,6 +32,13 @@ provider "aws" {
 
 provider "infisical" {
   host = "https://app.infisical.com"
+  service_token = var.infisical_token
+}
+
+# Defina a variável para que o Terraform aceite o valor do GitHub
+variable "infisical_token" {
+  type      = string
+  sensitive = true
 }
 
 provider "kubernetes" {
