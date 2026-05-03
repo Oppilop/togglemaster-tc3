@@ -1,0 +1,58 @@
+name: ToggleMaster Full Automation
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  terraform-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      # --- ETAPA 1: TERRAFORM (Infra e Repositórios) ---
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init & Apply
+        env:
+          INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      # --- ETAPA 2: DOCKER (Build & Push) ---
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Images
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          SERVICES=("auth" "flag" "targeting" "evaluation" "analytics")
+          for SERVICE in "${SERVICES[@]}"; do
+            docker build -t $ECR_REGISTRY/togglemaster-$SERVICE:latest ./$SERVICE
+            docker push $ECR_REGISTRY/togglemaster-$SERVICE:latest
+          done
+
+      # --- ETAPA 3: REFRESH (Atualizar Pods no EKS) ---
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --region us-east-1 --name togglemaster-eks-prod
+
+      - name: Restart Deployments
+        run: |
+          kubectl rollout restart deployment -n auth-namespace
+          kubectl rollout restart deployment -n flag-namespace
+          kubectl rollout restart deployment -n targeting-namespace
+          kubectl rollout restart deployment -n evaluation-namespace
+          kubectl rollout restart deployment -n analytics-namespace
