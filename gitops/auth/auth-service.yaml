@@ -18,18 +18,23 @@ spec:
           image: 191468900606.dkr.ecr.us-east-1.amazonaws.com/auth-service
           ports:
             - containerPort: 8001
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "200m"
-              memory: "256Mi"
+          env:
+            # Pegando o host do ConfigMap gerado pelo Terraform
+            - name: DB_HOST
+              valueFrom:
+                config_map_key_ref:
+                  name: togglemaster-db-config
+                  key: DB_HOST_0
+            # Pegando a senha do Secret gerado pelo Terraform (Infisical)
+            - name: DB_PASSWORD
+              valueFrom:
+                secret_key_ref:
+                  name: togglemaster-db-secret
+                  key: password_0
+          # Se sua aplicação ainda precisar do ConfigMap/Secret antigo para outras chaves:
           envFrom:
             - secretRef:
                 name: auth-service-secrets
-            - configMapRef:
-                name: auth-service-config
 ---
 apiVersion: v1
 kind: Service
@@ -43,24 +48,6 @@ spec:
   ports:
     - port: 8001
       targetPort: 8001
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: auth-service-secrets
-  namespace: auth-namespace
-type: Opaque
-data:
-  DB_PASSWORD: PjQtYipvJDlGYlRkQ116UU1oNXVJV3hya2QhUQ==
-  MASTER_KEY: S0RGam5kQGZkamdqMmZnZGc=
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: auth-service-config
-  namespace: auth-namespace
-data:
-  DATABASE_URL: "postgres://postgres:%3E4-b%2Ao%249FbTdC%5DzQMh5uIWxrkd%21Q@postgres-auth.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/authdb"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -80,4 +67,4 @@ spec:
               service:
                 name: auth-service
                 port:
-                  number: 8001  
+                  number: 8001

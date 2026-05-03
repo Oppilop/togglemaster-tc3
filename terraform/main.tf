@@ -1,18 +1,63 @@
+terraform {
+  # 1. CONFIGURAÇÃO DE BACKEND REMOTO
+  backend "s3" {
+    bucket = "seu-nome-de-bucket-s3" 
+    key    = "state/terraform.tfstate"
+    region = "us-east-1"
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+    infisical = {
+      source  = "infisical/infisical"
+      version = "~> 0.12.1"
+    }
+  }
+}
+
 provider "aws" {
   region = "us-east-1"
 }
 
-# 1. REFERÊNCIA À ROLE DA ACADEMY
+# CONFIGURAÇÃO DO INFISICAL
+provider "infisical" {
+  host = "https://app.infisical.com"
+}
+
+data "infisical_secrets" "db_secrets" {
+  env_slug     = "dev"
+  workspace_id = "3d29296c-2d40-49a8-b604-183f887fd6e7" 
+}
+
+# PROVIDER K8S
+provider "kubernetes" {
+  host                   = aws_eks_cluster.eks_cluster.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.eks_cluster.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = aws_eks_cluster.eks_cluster.name
+}
+
+# 2. REFERÊNCIA À ROLE DA ACADEMY
 data "aws_iam_role" "labrole" {
   name = "LabRole"
 }
 
-# 2. NETWORKING (VPC)
+# 3. NETWORKING (VPC)
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.0.0"
 
-  name = "togglemaster-vpc-tc3" # Nome novo
+  name = "togglemaster-vpc-tc3"
   cidr = "10.0.0.0/16"
 
   azs             = ["us-east-1a", "us-east-1b"]
@@ -26,14 +71,14 @@ module "vpc" {
   private_subnet_tags = { "kubernetes.io/role/internal-elb" = "1" }
 }
 
-# 3. REPOSITÓRIOS ECR (Adicionado sufixo -v2)
+# 4. REPOSITÓRIOS ECR
 locals {
   microservices = ["auth", "flag", "targeting", "evaluation", "analytics"]
 }
 
 resource "aws_ecr_repository" "repos" {
   for_each             = toset(local.microservices)
-  name                 = "togglemaster-${each.key}-v2"
+  name                 = "togglemaster-${each.key}"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -41,9 +86,9 @@ resource "aws_ecr_repository" "repos" {
   }
 }
 
-# 4. CLUSTER EKS (Nome novo)
+# 5. CLUSTER EKS
 resource "aws_eks_cluster" "eks_cluster" {
-  name     = "togglemaster-eks-v2"
+  name     = "togglemaster-eks-prod"
   version  = "1.30"
   role_arn = data.aws_iam_role.labrole.arn
 
@@ -53,10 +98,9 @@ resource "aws_eks_cluster" "eks_cluster" {
   }
 }
 
-# 4.1. NODE GROUP
 resource "aws_eks_node_group" "node_group" {
   cluster_name    = aws_eks_cluster.eks_cluster.name
-  node_group_name = "togglemaster-nodes-v2"
+  node_group_name = "togglemaster-nodes"
   node_role_arn   = data.aws_iam_role.labrole.arn
   subnet_ids      = module.vpc.private_subnets
   instance_types  = ["t3.medium"]
@@ -70,30 +114,32 @@ resource "aws_eks_node_group" "node_group" {
   depends_on = [aws_eks_cluster.eks_cluster]
 }
 
-# 5. RDS
-resource "aws_db_subnet_group" "rds_unique_group" {
-  name       = "togglemaster-rds-group-v2"
+# 6. BANCOS DE DADOS
+resource "aws_db_subnet_group" "rds_group" {
+  name       = "togglemaster-rds-group"
   subnet_ids = module.vpc.private_subnets
 }
 
 resource "aws_db_instance" "rds_instances" {
   count                  = 3
-  identifier             = "togglemaster-db-v2-${count.index}"
+  identifier             = "togglemaster-db-${count.index}"
   engine                 = "postgres"
   engine_version         = "15"
   instance_class         = "db.t3.micro"
   allocated_storage      = 20
   db_name                = "togglemaster"
   username               = "masteruser"
-  password               = "password123"
+  
+  # AJUSTADO: Busca DB_PASS_0, DB_PASS_1, DB_PASS_2 conforme o índice
+  password               = data.infisical_secrets.db_secrets.secrets["DB_PASS_${count.index}"].value
+  
   skip_final_snapshot    = true
-  db_subnet_group_name   = aws_db_subnet_group.rds_unique_group.name
+  db_subnet_group_name   = aws_db_subnet_group.rds_group.name
   vpc_security_group_ids = [aws_security_group.db_sg.id]
 }
 
-# 6. CACHE (Redis)
 resource "aws_elasticache_cluster" "redis" {
-  cluster_id           = "togglemaster-redis-v2"
+  cluster_id           = "togglemaster-redis"
   engine               = "redis"
   node_type            = "cache.t3.micro"
   num_cache_nodes      = 1
@@ -104,30 +150,24 @@ resource "aws_elasticache_cluster" "redis" {
 }
 
 resource "aws_elasticache_subnet_group" "redis_subnets" {
-  name       = "redis-subnets-v2"
+  name       = "redis-subnets"
   subnet_ids = module.vpc.private_subnets
 }
 
-# 7. DYNAMODB
 resource "aws_dynamodb_table" "analytics" {
-  name           = "ToggleMasterAnalyticsV2"
+  name           = "ToggleMasterAnalytics"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
-
-  attribute {
-    name = "id"
-    type = "S"
-  }
+  attribute { name = "id"; type = "S" }
 }
 
-# 8. SQS
+# 7. MENSAGERIA E SECURITY GROUP
 resource "aws_sqs_queue" "main_queue" {
-  name = "togglemaster-queue-v2"
+  name = "togglemaster-queue"
 }
 
-# 9. SECURITY GROUP
 resource "aws_security_group" "db_sg" {
-  name   = "togglemaster-db-sg-v2"
+  name   = "togglemaster-db-sg"
   vpc_id = module.vpc.vpc_id
 
   ingress {
@@ -145,13 +185,55 @@ resource "aws_security_group" "db_sg" {
   }
 }
 
+# 8. INJEÇÃO DE INFRA NO KUBERNETES
+
+resource "kubernetes_config_map" "db_config" {
+  metadata {
+    name = "togglemaster-db-config"
+  }
+
+  data = {
+    DB_HOST_0      = aws_db_instance.rds_instances[0].address
+    DB_HOST_1      = aws_db_instance.rds_instances[1].address
+    DB_HOST_2      = aws_db_instance.rds_instances[2].address
+    REDIS_ENDPOINT = aws_elasticache_cluster.redis.cache_nodes[0].address
+  }
+}
+
+resource "kubernetes_secret" "db_password_secret" {
+  metadata {
+    name = "togglemaster-db-secret"
+  }
+
+  # AJUSTADO: Mapeia as 3 senhas distintas para o K8s
+  data = {
+    password_0 = data.infisical_secrets.db_secrets.secrets["DB_PASS_0"].value
+    password_1 = data.infisical_secrets.db_secrets.secrets["DB_PASS_1"].value
+    password_2 = data.infisical_secrets.db_secrets.secrets["DB_PASS_2"].value
+  }
+
+  type = "Opaque"
+}
+
+# 9. INTEGRAÇÃO COM MANIFESTOS GITOPS
+
+resource "kubernetes_manifest" "namespaces" {
+  for_each = fileset("${path.module}/../gitops", "*-namespace.yaml")
+  manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
+  depends_on = [aws_eks_node_group.node_group]
+}
+
+resource "kubernetes_manifest" "jobs" {
+  for_each = fileset("${path.module}/../gitops", "*-job.yaml")
+  manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
+  depends_on = [aws_eks_node_group.node_group, aws_db_instance.rds_instances, kubernetes_secret.db_password_secret]
+}
+
+resource "kubernetes_manifest" "services" {
+  for_each = fileset("${path.module}/../gitops", "*-service.yaml")
+  manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
+  depends_on = [kubernetes_manifest.namespaces, kubernetes_manifest.jobs, kubernetes_config_map.db_config]
+}
+
 # --- OUTPUTS ---
 output "cluster_endpoint" { value = aws_eks_cluster.eks_cluster.endpoint }
-output "cluster_name"     { value = aws_eks_cluster.eks_cluster.name }
-output "ecr_repository_urls" {
-  value = { for k, v in aws_ecr_repository.repos : k => v.repository_url }
-}
-output "rds_endpoints" { value = aws_db_instance.rds_instances[*].endpoint }
-output "redis_endpoint" { value = aws_elasticache_cluster.redis.cache_nodes[0].address }
-output "sqs_queue_url"  { value = aws_sqs_queue.main_queue.id }
-output "dynamodb_table_name" { value = aws_dynamodb_table.analytics.name }

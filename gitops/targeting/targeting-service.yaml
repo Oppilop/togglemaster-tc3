@@ -15,19 +15,31 @@ spec:
     spec:
       containers:
         - name: targeting-service
-          image: 191468900606.dkr.ecr.us-east-1.amazonaws.com/targeting-service
+          # Imagem ajustada para o padrão do repositório ECR no Terraform
+          image: 191468900606.dkr.ecr.us-east-1.amazonaws.com/togglemaster-targeting
           ports:
             - containerPort: 8003
           resources:
             requests:
-              cpu: "150m"      # Reserva 15% de um núcleo
-              memory: "128Mi"  # Reserva 128MB de RAM
+              cpu: "150m"
+              memory: "128Mi"
             limits:
-              cpu: "300m"      # Teto de 30% de CPU
-              memory: "256Mi"  # Teto de 256MB de RAM
+              cpu: "300m"
+              memory: "256Mi"
+          env:
+            # Host do RDS injetado pelo Terraform (Índice 2)
+            - name: DB_HOST
+              valueFrom:
+                config_map_key_ref:
+                  name: togglemaster-db-config
+                  key: DB_HOST_2
+            # Senha do Infisical injetada pelo Terraform (Índice 2)
+            - name: DB_PASSWORD
+              valueFrom:
+                secret_key_ref:
+                  name: togglemaster-db-secret
+                  key: password_2
           envFrom:
-            - secretRef:
-                name: targeting-service-secrets
             - configMapRef:
                 name: targeting-service-config
 ---
@@ -44,25 +56,18 @@ spec:
     - port: 8003
       targetPort: 8003
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: targeting-service-secrets
-  namespace: targeting-namespace
-type: Opaque
-data:
-  DB_PASSWORD: Zm13dldvOmV8PFhTRTdGTFJzeCp3b1tMR3cqeg==
----
+# Secret manual removido: a senha agora vem do Infisical via Terraform
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: targeting-service-config
   namespace: targeting-namespace
 data:
-  DATABASE_URL: "postgres://postgres:fmwvWo%3Ae%7C%3CXSE7FLRsx%2Awo%5BLGw%2Az@potsgres-targeting.cpuaso8oc4w8.us-east-1.rds.amazonaws.com:5432/targetingdb"
-  AUTH_SERVICE_URL:  "http://auth-service.auth-namespace.svc.cluster.local:8001"
-  FLAG_SERVICE_URL: "http://flag-service.flag-namespace.svc.cluster.local:8002"
   PORT: "8003"
+  AUTH_SERVICE_URL: "http://auth-service.auth-namespace.svc.cluster.local:8001"
+  FLAG_SERVICE_URL: "http://flag-service.flag-namespace.svc.cluster.local:8002"
+  # DATABASE_URL removida para evitar exposição de credenciais
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

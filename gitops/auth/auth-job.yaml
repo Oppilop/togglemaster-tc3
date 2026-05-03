@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: auth-postgres-init
+  namespace: auth-namespace
 spec:
   template:
     spec:
@@ -10,33 +11,43 @@ spec:
       - name: auth-postgres-init-sql
         image: postgres:latest
         command: ["psql"]
-        args: ["-h", "postgres-auth.cpuaso8oc4w8.us-east-1.rds.amazonaws.com", "-U", "postgres","-d", "authdb", "-f", "/mnt/init.sql"]
+        args: 
+          - "-h"
+          - "$(DB_HOST)" 
+          - "-U"
+          - "masteruser"
+          - "-d"
+          - "togglemaster"
+          - "-f"
+          - "/mnt/init.sql"
         env:
-        - name: PGPASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: auth-postgres-init-secret
-              key: DB_PASSWORD
+          # Host dinâmico vindo do RDS de Auth (Índice 0)
+          - name: DB_HOST
+            valueFrom:
+              config_map_key_ref:
+                name: togglemaster-db-config
+                key: DB_HOST_0
+          # Senha segura vinda do Infisical (Índice 0)
+          - name: PGPASSWORD
+            valueFrom:
+              secret_key_ref:
+                name: togglemaster-db-secret
+                key: password_0
         volumeMounts:
         - name: init-sql
           mountPath: /mnt
       volumes:
       - name: init-sql
-        configMap:
+        config_map:
           name: auth-postgres-init-configmap
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: auth-postgres-init-secret
-type: Opaque
-data:
-  DB_PASSWORD: PjQtYipvJDlGYlRkQ116UU1oNXVJV3hya2QhUQ==
----
+# Secret manual removido para usar a integração com o Terraform/Infisical
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: auth-postgres-init-configmap
+  namespace: auth-namespace
 data:
   init.sql: |
     CREATE TABLE IF NOT EXISTS api_keys (

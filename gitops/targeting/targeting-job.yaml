@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: targeting-postgres-init
+  namespace: targeting-namespace
 spec:
   template:
     spec:
@@ -10,13 +11,28 @@ spec:
       - name: targeting-postgres-init-sql
         image: postgres:latest
         command: ["psql"]
-        args: ["-h", "potsgres-targeting.cpuaso8oc4w8.us-east-1.rds.amazonaws.com", "-U", "postgres", "-d", "targetingdb", "-f", "/mnt/init.sql"]
+        args: 
+          - "-h"
+          - "$(DB_HOST)" 
+          - "-U"
+          - "masteruser"
+          - "-d"
+          - "togglemaster"
+          - "-f"
+          - "/mnt/init.sql"
         env:
-        - name: PGPASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: targeting-postgres-init-secret
-              key: DB_PASSWORD
+          # Host dinâmico vindo do RDS de Targeting (Índice 2)
+          - name: DB_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: togglemaster-db-config
+                key: DB_HOST_2
+          # Senha segura vinda do Infisical (Índice 2)
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: togglemaster-db-secret
+                key: password_2
         volumeMounts:
         - name: init-sql
           mountPath: /mnt
@@ -25,40 +41,24 @@ spec:
         configMap:
           name: targeting-postgres-init-configmap
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: targeting-postgres-init-secret
-type: Opaque
-data:
-  DB_PASSWORD: Zm13dldvOmV8PFhTRTdGTFJzeCp3b1tMR3cqeg==
----
+# Secret manual removido para usar a integração com o Terraform/Infisical
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: targeting-postgres-init-configmap
+  namespace: targeting-namespace
 data:
   init.sql: |
     CREATE TABLE IF NOT EXISTS targeting_rules (
-    id SERIAL PRIMARY KEY,
-
-    -- 'flag_name' é a chave de negócio única. 
-    -- Cada flag pode ter no máximo UMA regra de segmentação.
-    flag_name VARCHAR(100) UNIQUE NOT NULL,
-    
-    -- Se a regra de segmentação em si está ativa ou não
-    is_enabled BOOLEAN NOT NULL DEFAULT true,
-    
-    -- Armazena a lógica da regra como um JSON.
-    -- Ex: {"type": "PERCENTAGE", "value": 50}
-    -- Ex: {"type": "USER_LIST", "values": ["u1", "u2"]}
-    rules JSONB NOT NULL,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      id SERIAL PRIMARY KEY,
+      flag_name VARCHAR(100) UNIQUE NOT NULL,
+      is_enabled BOOLEAN NOT NULL DEFAULT true,
+      rules JSONB NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Trigger para atualizar 'updated_at' automaticamente (igual ao do flag-service)
     CREATE OR REPLACE FUNCTION trigger_set_timestamp()
     RETURNS TRIGGER AS $$
     BEGIN

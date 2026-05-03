@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: flag-postgres-init
+  namespace: flag-namespace
 spec:
   template:
     spec:
@@ -10,13 +11,29 @@ spec:
       - name: flag-postgres-init-sql
         image: postgres:latest
         command: ["psql"]
-        args: ["-h", "postgres-flag.cpuaso8oc4w8.us-east-1.rds.amazonaws.com", "-U", "postgres", "-d", "flagdb", "-f", "/mnt/init.sql"]
+        # Alterado para ler o host do ConfigMap gerado pelo Terraform
+        args: 
+          - "-h"
+          - "$(DB_HOST)" 
+          - "-U"
+          - "masteruser" # O usuário que definimos no main.tf
+          - "-d"
+          - "togglemaster" # O db_name definido no main.tf
+          - "-f"
+          - "/mnt/init.sql"
         env:
-        - name: PGPASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: flag-postgres-init-secret
-              key: DB_PASSWORD
+          # Host vindo do Terraform
+          - name: DB_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: togglemaster-db-config
+                key: DB_HOST_1
+          # Senha vinda do Infisical via Terraform
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: togglemaster-db-secret
+                key: password_1
         volumeMounts:
         - name: init-sql
           mountPath: /mnt
@@ -25,32 +42,24 @@ spec:
         configMap:
           name: flag-postgres-init-configmap
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: flag-postgres-init-secret
-type: Opaque
-data:
-  DB_PASSWORD: N0lURmJsLlpxX1sxKDJUKkg5ZW1+LWlNOjdiOg==
----
+# O Secret manual foi removido. O Job agora usa o 'togglemaster-db-secret'
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: flag-postgres-init-configmap
+  namespace: flag-namespace
 data:
   init.sql: |
     CREATE TABLE IF NOT EXISTS flags (
-    id SERIAL PRIMARY KEY,
-
-    -- 'name' é a chave de negócio única (ex: 'enable-new-checkout')
-    name VARCHAR(100) UNIQUE NOT NULL, 
-    description TEXT,
-    -- Este é o 'kill switch' global. Se for false, a flag está desativada para todos.
-    is_enabled BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100) UNIQUE NOT NULL, 
+      description TEXT,
+      is_enabled BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
-    -- Opcional, mas boa prática: Trigger para atualizar 'updated_at' automaticamente
+
     CREATE OR REPLACE FUNCTION trigger_set_timestamp()
     RETURNS TRIGGER AS $$
     BEGIN
@@ -59,7 +68,6 @@ data:
     END;
     $$ LANGUAGE plpgsql;
 
-    -- Remove o trigger se já existir, para evitar erro na recriação
     DROP TRIGGER IF EXISTS set_timestamp ON flags;
 
     CREATE TRIGGER set_timestamp

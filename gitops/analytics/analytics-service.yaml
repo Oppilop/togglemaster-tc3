@@ -20,16 +20,28 @@ spec:
             - containerPort: 8005
           resources:
             requests:
-              cpu: "250m"      # Reserva 1/4 de um núcleo
-              memory: "256Mi"  # Reserva 256MB de RAM
+              cpu: "250m"
+              memory: "256Mi"
             limits:
-              cpu: "500m"      # Pode usar até meio núcleo se precisar
-              memory: "512Mi"  # Teto de 512MB para não travar o nó
+              cpu: "500m"
+              memory: "512Mi"
+          env:
+            # Pega o Endpoint do Redis gerado pelo Terraform
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: togglemaster-db-config
+                  key: REDIS_ENDPOINT
+            # As chaves AWS não devem ficar aqui. 
+            # No LabRole da Academy, o EKS já tem permissão para SQS/Dynamo.
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: AWS_DYNAMODB_TABLE
+              value: "ToggleMasterAnalytics"
+          # Mantemos o envFrom apenas para configurações menores
           envFrom:
-          - secretRef:
-              name: analytics-service-secrets
-          - configMapRef:
-              name: analytics-service-config
+            - configMapRef:
+                name: analytics-service-config
 ---
 apiVersion: v1
 kind: Service
@@ -44,17 +56,9 @@ spec:
     - port: 8005
       targetPort: 8005
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: analytics-service-secrets
-  namespace: analytics-namespace
-type: Opaque
-stringData:
-  AWS_ACCESS_KEY_ID: "ASIASZFDPSD7BGS2K24M"
-  AWS_SECRET_ACCESS_KEY: "DK9tsoggeUuz38tdlP3WUiMft51RTV0/0gaQI3Cx"
-  AWS_SESSION_TOKEN: "IQoJb3JpZ2luX2VjEEoaCXVzLXdlc3QtMiJHMEUCIQDGNyzaVHFq5TH+acSSMYOitJlndvzec92NT5YSKwTLbAIgCw9FgvW9ysakllMzyL6ZeUNnP7lOnCgJAnQj386BkXUqqAIIExAAGgwxOTE0Njg5MDA2MDYiDAfPSNJ7bwUoEAinLCqFAs7faD84uDT/Vzst7qNtq6sVkgasIqOYrXJEieBX56EfCdeV7/Pm30Y0yo6NvrrISD4WW5EMP2153L6ellUCl9n6L95svgCvgyseo5KCFGEE36mys5fiM/oYQeEgsdrGWwMiFPBf7lpH9TJ/hFkICcrnkLe6DOpXjrJO/JZR4Jzu2c3UHCXkg5SRZwP4e3aloQWtKWSmhQDQLtRxlWvGJaODNRYoVzW4PFl0lmvGKhM8nd5Ax3i48sNUllptHbJHfsRKQFZ0gBcS/91HpxOecOu9QpjQtuUpc3zy3U5orBtBAoGQJYXSkSUL9Qn3y+yAY9ZGQ71cgwW18FqGZ1vZ9R6+S6oReDDEq+3NBjqdASjtbZazbCyxapaytalYTViUy5kW9GpizRfJvgQSRQXR9Aigjr+37XNhFyXgIqC1Uydm3cITAnklVfAfBZRpa3Z4DmhVRzlPGK8HX3F6junyWaOmPNUAaoNxORiNcdnGTlyR7n2IASKKMXpv+3Lafl7dWGQxhrP1wIBiSfA379z31Dik9vUbNBUiG90IU8LQjx7QCPqk133XjFJkm7M="
----
+# Removi o Secret manual (AWS_ACCESS_KEY) pois é inseguro e expira.
+# Removi a REDIS_URL manual do ConfigMap pois agora vem do Terraform.
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -62,10 +66,8 @@ metadata:
   namespace: analytics-namespace
 data:
   ANALYTICS_PORT: "8005"
-  AWS_REGION: "us-east-1"
-  REDIS_URL: "rediss://clustercfg.togglemaster-redis-prod.n7s9nu.use1.cache.amazonaws.com:6379"
-  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/191468900606/togglemaster-sqs-prod"
-  AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
+  # Coloque aqui apenas URLs fixas ou nomes de filas se não vierem do TF
+  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/191468900606/togglemaster-queue"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -85,4 +87,4 @@ spec:
               service:
                 name: analytics-service
                 port:
-                  number: 8005  
+                  number: 8005
