@@ -24,9 +24,9 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init & Apply
+        working-directory: ./terraform
         env:
           INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
-          working-directory: ./terraform
         run: |
           terraform init
           terraform apply -auto-approve
