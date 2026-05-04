@@ -43,7 +43,8 @@ jobs:
         run: |
           SERVICES=("auth" "flag" "targeting" "evaluation" "analytics")
           for SERVICE in "${SERVICES[@]}"; do
-            docker build -t $ECR_REGISTRY/togglemaster-$SERVICE:latest ./$SERVICE
+            # Ajustado de ./$SERVICE para ./services/$SERVICE
+            docker build -t $ECR_REGISTRY/togglemaster-$SERVICE:latest ./services/$SERVICE
             docker push $ECR_REGISTRY/togglemaster-$SERVICE:latest
           done
 
