@@ -43,8 +43,8 @@ jobs:
         run: |
           SERVICES=("auth" "flag" "targeting" "evaluation" "analytics")
           for SERVICE in "${SERVICES[@]}"; do
-            # Ajustado de ./$SERVICE para ./services/$SERVICE
-            docker build -t $ECR_REGISTRY/togglemaster-$SERVICE:latest ./services/$SERVICE
+            # O caminho da pasta agora inclui o sufixo '-service'
+            docker build -t $ECR_REGISTRY/togglemaster-$SERVICE:latest ./services/${SERVICE}-service
             docker push $ECR_REGISTRY/togglemaster-$SERVICE:latest
           done
 
