@@ -24,15 +24,15 @@ spec:
           # Host dinâmico vindo do RDS de Auth (Índice 0)
           - name: DB_HOST
             valueFrom:
-              config_map_key_ref:
+              configMapKeyRef:
                 name: togglemaster-db-config
                 key: DB_HOST_0
           # Senha segura vinda do Infisical (Índice 0)
           - name: PGPASSWORD
             valueFrom:
-              secret_key_ref:
+              secretKeyRef:
                 name: togglemaster-db-secret
-                key: password_0
+                key: DB_PASS_0
         volumeMounts:
         - name: init-sql
           mountPath: /mnt
