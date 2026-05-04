@@ -1,4 +1,4 @@
-name: ToggleMaster Full Automation
+name: ToggleMaster CICD
 
 on:
   push:
