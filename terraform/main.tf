@@ -220,7 +220,7 @@ resource "kubernetes_namespace" "app_namespaces" {
 
 # 2. Aplicação dos Jobs (Depende dos namespaces criados acima)
 resource "kubernetes_manifest" "jobs" {
-  for_each = fileset("${path.module}/../gitops", "*-job.yaml")
+  for_each = fileset("${path.module}/../gitops", "**/*-job.yaml")
   manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
   depends_on = [
     kubernetes_namespace.app_namespaces, 
@@ -231,7 +231,7 @@ resource "kubernetes_manifest" "jobs" {
 
 # 3. Aplicação dos Services (Depende dos jobs e configmaps)
 resource "kubernetes_manifest" "services" {
-  for_each = fileset("${path.module}/../gitops", "*-service.yaml")
+  for_each = fileset("${path.module}/../gitops", "**/*-service.yaml")
   manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
   depends_on = [
     kubernetes_manifest.jobs, 
