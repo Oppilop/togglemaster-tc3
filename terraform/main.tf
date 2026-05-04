@@ -92,7 +92,7 @@ module "vpc" {
 
 resource "aws_ecr_repository" "repos" {
   for_each = toset(["auth", "flag", "targeting", "evaluation", "analytics"])
-  name     = "togglemaster-${each.key}"
+  name      = "togglemaster-${each.key}"
 }
 
 resource "aws_eks_cluster" "eks_cluster" {
@@ -209,21 +209,33 @@ resource "kubernetes_secret" "db_password_secret" {
   }
 }
 
-# APLICAÇÃO DOS MANIFESTOS NA ORDEM CORRETA
-resource "kubernetes_manifest" "namespaces" {
-  for_each = fileset("${path.module}/../gitops", "*-namespace.yaml")
-  manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
+# 1. Criação EXPLÍCITA dos Namespaces (Mais confiável que kubernetes_manifest para namespaces)
+resource "kubernetes_namespace" "app_namespaces" {
+  for_each = toset(["auth", "flag", "targeting", "evaluation", "analytics"])
+  metadata {
+    name = "${each.key}-namespace"
+  }
   depends_on = [aws_eks_node_group.node_group]
 }
 
+# 2. Aplicação dos Jobs (Depende dos namespaces criados acima)
 resource "kubernetes_manifest" "jobs" {
   for_each = fileset("${path.module}/../gitops", "*-job.yaml")
   manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
-  depends_on = [kubernetes_manifest.namespaces, aws_db_instance.rds_instances, kubernetes_secret.db_password_secret]
+  depends_on = [
+    kubernetes_namespace.app_namespaces, 
+    aws_db_instance.rds_instances, 
+    kubernetes_secret.db_password_secret
+  ]
 }
 
+# 3. Aplicação dos Services (Depende dos jobs e configmaps)
 resource "kubernetes_manifest" "services" {
   for_each = fileset("${path.module}/../gitops", "*-service.yaml")
   manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
-  depends_on = [kubernetes_manifest.jobs, kubernetes_config_map.db_config]
+  depends_on = [
+    kubernetes_manifest.jobs, 
+    kubernetes_config_map.db_config,
+    kubernetes_namespace.app_namespaces
+  ]
 }
