@@ -220,12 +220,12 @@ resource "kubernetes_namespace" "app_namespaces" {
 
 # 2. Aplicação dos Jobs
 resource "kubernetes_manifest" "jobs" {
-  # O flatten garante que se um arquivo tiver 3 recursos, teremos 3 entradas no for_each
   for_each = {
     for pair in flatten([
       for filepath in fileset("${path.module}/../gitops", "**/*-job.yaml") : [
-        for index, doc in split("\n---\n", file("${path.module}/../gitops/${filepath}")) : {
-          key = "${filepath}-${index}"
+        for doc in split("\n---\n", file("${path.module}/../gitops/${filepath}")) : {
+          # Criamos uma chave baseada no arquivo + Kind + Nome do recurso
+          key     = "${filepath}-${yamldecode(doc).kind}-${yamldecode(doc).metadata.name}"
           content = doc
         } if trimspace(doc) != ""
       ]
@@ -246,8 +246,8 @@ resource "kubernetes_manifest" "services" {
   for_each = {
     for pair in flatten([
       for filepath in fileset("${path.module}/../gitops", "**/*-service.yaml") : [
-        for index, doc in split("\n---\n", file("${path.module}/../gitops/${filepath}")) : {
-          key = "${filepath}-${index}"
+        for doc in split("\n---\n", file("${path.module}/../gitops/${filepath}")) : {
+          key     = "${filepath}-${yamldecode(doc).kind}-${yamldecode(doc).metadata.name}"
           content = doc
         } if trimspace(doc) != ""
       ]
