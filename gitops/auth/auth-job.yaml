@@ -40,8 +40,6 @@ spec:
       - name: init-sql
         config_map:
           name: auth-postgres-init-configmap
----
-# Secret manual removido para usar a integração com o Terraform/Infisical
 
 apiVersion: v1
 kind: ConfigMap

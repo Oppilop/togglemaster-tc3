@@ -22,13 +22,13 @@ spec:
             # Pegando o host do ConfigMap gerado pelo Terraform
             - name: DB_HOST
               valueFrom:
-                config_map_key_ref:
+                configMapKeyRef:
                   name: togglemaster-db-config
                   key: DB_HOST_0
             # Pegando a senha do Secret gerado pelo Terraform (Infisical)
             - name: DB_PASSWORD
               valueFrom:
-                secret_key_ref:
+                secretKeyRef:
                   name: togglemaster-db-secret
                   key: password_0
           # Se sua aplicação ainda precisar do ConfigMap/Secret antigo para outras chaves:
