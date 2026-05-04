@@ -31,12 +31,21 @@ provider "aws" {
 }
 
 provider "infisical" {
-  host = "https://app.infisical.com"
-  service_token = var.infisical_token
+  host          = "https://app.infisical.com"
+  auth {
+    universal_auth {
+      client_id     = var.infisical_client_id
+      client_secret = var.infisical_client_secret
+    }
+  }
 }
 
-# Defina a variável para que o Terraform aceite o valor do GitHub
-variable "infisical_token" {
+variable "infisical_client_id" {
+  type      = string
+  sensitive = true
+}
+
+variable "infisical_client_secret" {
   type      = string
   sensitive = true
 }
