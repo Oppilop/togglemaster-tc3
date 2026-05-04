@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +20,7 @@ var ctx = context.Background()
 
 // App struct para injeção de dependência
 type App struct {
-	RedisClient         *redis.Client
+	RedisClient         *redis.Client // Mantido como Client (não ClusterClient)
 	SqsSvc              *sqs.SQS
 	SqsQueueURL         string
 	HttpClient          *http.Client
@@ -63,29 +64,26 @@ func main() {
 
 	// --- Inicializa Clientes ---
 
-	// Cliente Redis
+	// 1. Cliente Redis (Configuração corrigida)
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
 		log.Fatalf("Não foi possível parsear a URL do Redis: %v", err)
 	}
-	// rdb := redis.NewClient(opt)
 
-	// 2. Criar as opções de Cluster baseadas no Parse anterior
-	rdb := redis.NewClusterClient(&redis.ClusterOptions{
-    Addrs: []string{opt.Addr},
+	// Adiciona configuração de TLS necessária para a AWS ElastiCache
+	opt.TLSConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
 
-	// Habilita o TLS (Obrigatório pois seu Redis está com 'Criptografia em trânsito')
-    TLSConfig: &tls.Config{
-        InsecureSkipVerify: true, // Ignora a validação do certificado da AWS na rede interna
-    },
-	})
+	// Inicializa como Client simples (compatível com num_cache_nodes = 1)
+	rdb := redis.NewClient(opt)
 
 	if _, err := rdb.Ping(ctx).Result(); err != nil {
 		log.Fatalf("Não foi possível conectar ao Redis: %v", err)
 	}
 	log.Println("Conectado ao Redis com sucesso!")
 
-	// Cliente SQS (AWS SDK)
+	// 2. Cliente SQS (AWS SDK)
 	var sqsSvc *sqs.SQS
 	if sqsQueueURL != "" {
 		localstackEndpoint := os.Getenv("LOCALSTACK_ENDPOINT")
@@ -108,7 +106,7 @@ func main() {
 		log.Println("Cliente SQS inicializado com sucesso.")
 	}
 
-	// Cliente HTTP (com timeout)
+	// 3. Cliente HTTP (com timeout)
 	httpClient := &http.Client{
 		Timeout: 5 * time.Second,
 	}
