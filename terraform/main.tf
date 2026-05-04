@@ -218,10 +218,22 @@ resource "kubernetes_namespace" "app_namespaces" {
   depends_on = [aws_eks_node_group.node_group]
 }
 
-# 2. Aplicação dos Jobs (Depende dos namespaces criados acima)
+# 2. Aplicação dos Jobs
 resource "kubernetes_manifest" "jobs" {
-  for_each = fileset("${path.module}/../gitops", "**/*-job.yaml")
-  manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
+  # O flatten garante que se um arquivo tiver 3 recursos, teremos 3 entradas no for_each
+  for_each = {
+    for pair in flatten([
+      for filepath in fileset("${path.module}/../gitops", "**/*-job.yaml") : [
+        for index, doc in split("\n---\n", file("${path.module}/../gitops/${filepath}")) : {
+          key = "${filepath}-${index}"
+          content = doc
+        } if trimspace(doc) != ""
+      ]
+    ]) : pair.key => pair.content
+  }
+
+  manifest = yamldecode(each.value)
+
   depends_on = [
     kubernetes_namespace.app_namespaces, 
     aws_db_instance.rds_instances, 
@@ -229,10 +241,21 @@ resource "kubernetes_manifest" "jobs" {
   ]
 }
 
-# 3. Aplicação dos Services (Depende dos jobs e configmaps)
+# 3. Aplicação dos Services
 resource "kubernetes_manifest" "services" {
-  for_each = fileset("${path.module}/../gitops", "**/*-service.yaml")
-  manifest = yamldecode(file("${path.module}/../gitops/${each.value}"))
+  for_each = {
+    for pair in flatten([
+      for filepath in fileset("${path.module}/../gitops", "**/*-service.yaml") : [
+        for index, doc in split("\n---\n", file("${path.module}/../gitops/${filepath}")) : {
+          key = "${filepath}-${index}"
+          content = doc
+        } if trimspace(doc) != ""
+      ]
+    ]) : pair.key => pair.content
+  }
+
+  manifest = yamldecode(each.value)
+
   depends_on = [
     kubernetes_manifest.jobs, 
     kubernetes_config_map.db_config,
