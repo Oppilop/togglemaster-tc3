@@ -32,9 +32,6 @@ provider "aws" {
 
 provider "infisical" {
   host          = "https://app.infisical.com"
-  # Remova o bloco 'auth' e 'universal_auth'
-  # Use os argumentos diretos abaixo:
-  auth_method   = "universal-auth"
   client_id     = var.infisical_client_id
   client_secret = var.infisical_client_secret
 }
