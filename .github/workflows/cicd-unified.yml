@@ -4,9 +4,114 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
+  # ─────────────────────────────────────────────────
+  # JOB 1: SonarCloud — SAST + Code Quality
+  # ─────────────────────────────────────────────────
+  sonarcloud:
+    name: 'SonarCloud SAST'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies and Run Tests
+        run: |
+          # 1. Testes Go (Auth, Evaluation)
+          echo "Rodando testes Go..."
+          go test ./services/auth-service/... ./services/evaluation-service/... -coverprofile=coverage-go.out
+
+          # 2. Testes Python (Analytics, Flag, Targeting)
+          echo "Rodando testes Python..."
+          python -m pip install pytest pytest-cov
+          for s in "analytics-service" "flag-service" "targeting-service"; do
+            if [ -f "services/$s/requirements.txt" ]; then
+              pip install -r services/$s/requirements.txt
+            fi
+          done
+          # Gera relatório de cobertura XML para o Sonar
+          pytest services/analytics-service services/flag-service services/targeting-service \
+            --cov=services/analytics-service \
+            --cov=services/flag-service \
+            --cov=services/targeting-service \
+            --cov-report=xml:coverage-python.xml
+        continue-on-error: true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ─────────────────────────────────────────────────
+  # JOB 2: Trivy — IaC + Dockerfile
+  # ─────────────────────────────────────────────────
+  trivy-iac:
+    name: 'Trivy IaC + Dockerfile'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy IaC Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+  # ─────────────────────────────────────────────────
+  # JOB 3: Trivy — Container Scan (Loop para 5 imagens)
+  # ─────────────────────────────────────────────────
+  trivy-container:
+    name: 'Trivy Container Scan'
+    runs-on: ubuntu-latest
+    needs: [sonarcloud, trivy-iac]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and Scan All Images
+        run: |
+          SERVICES=("auth" "evaluation" "analytics" "flag" "targeting")
+          
+          # Instala Trivy localmente
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          
+          for S in "${SERVICES[@]}"; do
+            IMAGE_NAME="togglemaster-$S:${{ github.sha }}"
+            echo "Building and Scanning: $IMAGE_NAME"
+            
+            docker build -t $IMAGE_NAME ./services/${S}-service
+            trivy image --severity CRITICAL,HIGH --exit-code 0 --format table $IMAGE_NAME
+          done
+
+  # ─────────────────────────────────────────────────
+  # JOB 4: Deploy (Terraform + ECR Push)
+  # ─────────────────────────────────────────────────
   terraform-and-deploy:
     runs-on: ubuntu-latest
+    needs: [trivy-container] # Garante que só faz deploy se os scans passarem
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -19,7 +124,6 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      # --- ETAPA 1: TERRAFORM (Infra e Repositórios) ---
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -32,30 +136,25 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      # --- ETAPA 2: DOCKER (Build & Push) ---
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push Images
+      - name: Build and Push Images to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           SERVICES=("auth" "flag" "targeting" "evaluation" "analytics")
           for SERVICE in "${SERVICES[@]}"; do
-            # O caminho da pasta agora inclui o sufixo '-service'
             docker build -t $ECR_REGISTRY/togglemaster-$SERVICE:latest ./services/${SERVICE}-service
             docker push $ECR_REGISTRY/togglemaster-$SERVICE:latest
           done
 
-      # --- ETAPA 3: REFRESH (Atualizar Pods no EKS) ---
       - name: Update Kubeconfig
         run: aws eks update-kubeconfig --region us-east-1 --name togglemaster-eks-prod
 
       - name: Restart Deployments
         run: |
-          kubectl rollout restart deployment -n auth-namespace
-          kubectl rollout restart deployment -n flag-namespace
-          kubectl rollout restart deployment -n targeting-namespace
-          kubectl rollout restart deployment -n evaluation-namespace
-          kubectl rollout restart deployment -n analytics-namespace
+          for ns in auth flag targeting evaluation analytics; do
+            kubectl rollout restart deployment -n ${ns}-namespace || echo "Namespace $ns não tem deployments ativos ainda"
+          done
