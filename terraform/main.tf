@@ -46,17 +46,29 @@ variable "infisical_client_secret" {
   sensitive = true
 }
 
+# --- CONFIGURAÇÃO DOS PROVIDERS K8S ---
+
 provider "kubernetes" {
   host                   = aws_eks_cluster.eks_cluster.endpoint
   cluster_ca_certificate = base64decode(aws_eks_cluster.eks_cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.cluster.token
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    args        = ["eks", "get-token", "--cluster-name", aws_eks_cluster.eks_cluster.name]
+    command     = "aws"
+  }
 }
 
 provider "helm" {
   kubernetes {
     host                   = aws_eks_cluster.eks_cluster.endpoint
     cluster_ca_certificate = base64decode(aws_eks_cluster.eks_cluster.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.cluster.token
+
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      args        = ["eks", "get-token", "--cluster-name", aws_eks_cluster.eks_cluster.name]
+      command     = "aws"
+    }
   }
 }
 
@@ -188,7 +200,7 @@ resource "helm_release" "metrics_server" {
   depends_on = [aws_eks_node_group.node_group]
 }
 
-# --- CONFIGURAÇÃO KUBERNETES & GITOPS ---
+# --- CONFIGURAÇÃO KUBERNETES & GITOPS COM DEPENDÊNCIAS CORRETAS ---
 
 resource "kubernetes_config_map" "db_config" {
   metadata { name = "togglemaster-db-config" }
@@ -198,6 +210,8 @@ resource "kubernetes_config_map" "db_config" {
     DB_HOST_2 = aws_db_instance.rds_instances[2].address
     REDIS_ENDPOINT = aws_elasticache_cluster.redis.cache_nodes[0].address
   }
+  # Garante que os nós existam antes de injetar configs no cluster
+  depends_on = [aws_eks_node_group.node_group]
 }
 
 resource "kubernetes_secret" "db_password_secret" {
@@ -207,24 +221,23 @@ resource "kubernetes_secret" "db_password_secret" {
     password_1 = data.infisical_secrets.db_secrets.secrets["DB_PASS_1"].value
     password_2 = data.infisical_secrets.db_secrets.secrets["DB_PASS_2"].value
   }
+  depends_on = [aws_eks_node_group.node_group]
 }
 
-# 1. Criação EXPLÍCITA dos Namespaces (Mais confiável que kubernetes_manifest para namespaces)
 resource "kubernetes_namespace" "app_namespaces" {
   for_each = toset(["auth", "flag", "targeting", "evaluation", "analytics"])
   metadata {
     name = "${each.key}-namespace"
   }
+  # Essencial: Namespaces só podem ser criados com os nós prontos e API estável
   depends_on = [aws_eks_node_group.node_group]
 }
 
-# 2. Aplicação dos Jobs
 resource "kubernetes_manifest" "jobs" {
   for_each = {
     for pair in flatten([
       for filepath in fileset("${path.module}/../gitops", "**/*-job.yaml") : [
         for doc in split("\n---\n", file("${path.module}/../gitops/${filepath}")) : {
-          # Criamos uma chave baseada no arquivo + Kind + Nome do recurso
           key     = "${filepath}-${yamldecode(doc).kind}-${yamldecode(doc).metadata.name}"
           content = doc
         } if trimspace(doc) != ""
@@ -235,13 +248,13 @@ resource "kubernetes_manifest" "jobs" {
   manifest = yamldecode(each.value)
 
   depends_on = [
+    aws_eks_node_group.node_group,
     kubernetes_namespace.app_namespaces, 
     aws_db_instance.rds_instances, 
     kubernetes_secret.db_password_secret
   ]
 }
 
-# 3. Aplicação dos Services
 resource "kubernetes_manifest" "services" {
   for_each = {
     for pair in flatten([
@@ -257,6 +270,7 @@ resource "kubernetes_manifest" "services" {
   manifest = yamldecode(each.value)
 
   depends_on = [
+    aws_eks_node_group.node_group,
     kubernetes_manifest.jobs, 
     kubernetes_config_map.db_config,
     kubernetes_namespace.app_namespaces
