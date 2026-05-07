@@ -22,7 +22,23 @@ terraform {
     infisical = {
       source  = "infisical/infisical"
       version = "~> 0.12.1"
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
+     }
     }
+  }
+}
+
+provider "kubectl" {
+  host                   = aws_eks_cluster.eks_cluster.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.eks_cluster.certificate_authority[0].data)
+  load_config_file       = false
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    args        = ["eks", "get-token", "--cluster-name", aws_eks_cluster.eks_cluster.name]
+    command     = "aws"
   }
 }
 
@@ -233,7 +249,8 @@ resource "kubernetes_namespace" "app_namespaces" {
   depends_on = [aws_eks_node_group.node_group]
 }
 
-resource "kubernetes_manifest" "jobs" {
+# Substitua o bloco de JOBS
+resource "kubectl_manifest" "jobs" {
   for_each = {
     for pair in flatten([
       for filepath in fileset("${path.module}/../gitops", "**/*-job.yaml") : [
@@ -245,17 +262,18 @@ resource "kubernetes_manifest" "jobs" {
     ]) : pair.key => pair.content
   }
 
-  manifest = yamldecode(each.value)
+  yaml_body = each.value # Aqui mudou de 'manifest' para 'yaml_body'
 
   depends_on = [
     aws_eks_node_group.node_group,
-    kubernetes_namespace.app_namespaces, 
-    aws_db_instance.rds_instances, 
+    kubernetes_namespace.app_namespaces,
+    aws_db_instance.rds_instances,
     kubernetes_secret.db_password_secret
   ]
 }
 
-resource "kubernetes_manifest" "services" {
+# Substitua o bloco de SERVICES
+resource "kubectl_manifest" "services" {
   for_each = {
     for pair in flatten([
       for filepath in fileset("${path.module}/../gitops", "**/*-service.yaml") : [
@@ -267,11 +285,11 @@ resource "kubernetes_manifest" "services" {
     ]) : pair.key => pair.content
   }
 
-  manifest = yamldecode(each.value)
+  yaml_body = each.value
 
   depends_on = [
     aws_eks_node_group.node_group,
-    kubernetes_manifest.jobs, 
+    kubectl_manifest.jobs, # Referência atualizada
     kubernetes_config_map.db_config,
     kubernetes_namespace.app_namespaces
   ]
