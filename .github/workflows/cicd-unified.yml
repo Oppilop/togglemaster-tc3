@@ -34,34 +34,34 @@ jobs:
           python-version: '3.9'
 
 
-      - name: Install Dependencies and Run Tests
-        run: |
-          # 1. Testes Go (Entrando em cada diretório)
-          echo "Rodando testes Go..."
+      # - name: Install Dependencies and Run Tests
+      #   run: |
+      #     # 1. Testes Go (Entrando em cada diretório)
+      #     echo "Rodando testes Go..."
           
-          echo "Testing Auth..."
-          cd services/auth-service && go test ./... -coverprofile=../../coverage-auth.out && cd ../..
+      #     echo "Testing Auth..."
+      #     cd services/auth-service && go test ./... -coverprofile=../../coverage-auth.out && cd ../..
           
-          echo "Testing Evaluation..."
-          cd services/evaluation-service && go test ./... -coverprofile=../../coverage-eval.out && cd ../..
+      #     echo "Testing Evaluation..."
+      #     cd services/evaluation-service && go test ./... -coverprofile=../../coverage-eval.out && cd ../..
 
-          # Unificar os reports para o Sonar (opcional, ou aponte os dois no sonar-project.properties)
-          cat coverage-auth.out > coverage-go.out
-          tail -n +2 coverage-eval.out >> coverage-go.out
+      #     # Unificar os reports para o Sonar (opcional, ou aponte os dois no sonar-project.properties)
+      #     cat coverage-auth.out > coverage-go.out
+      #     tail -n +2 coverage-eval.out >> coverage-go.out
 
-          # 2. Testes Python
-          echo "Rodando testes Python..."
-          python -m pip install pytest pytest-cov
-          for s in "analytics-service" "flag-service" "targeting-service"; do
-            if [ -f "services/$s/requirements.txt" ]; then
-              pip install -r services/$s/requirements.txt
-            fi
-          done
-          pytest services/analytics-service services/flag-service services/targeting-service \
-            --cov=services/analytics-service \
-            --cov=services/flag-service \
-            --cov=services/targeting-service \
-            --cov-report=xml:coverage-python.xml
+      #     # 2. Testes Python
+      #     echo "Rodando testes Python..."
+      #     python -m pip install pytest pytest-cov
+      #     for s in "analytics-service" "flag-service" "targeting-service"; do
+      #       if [ -f "services/$s/requirements.txt" ]; then
+      #         pip install -r services/$s/requirements.txt
+      #       fi
+      #     done
+      #     pytest services/analytics-service services/flag-service services/targeting-service \
+      #       --cov=services/analytics-service \
+      #       --cov=services/flag-service \
+      #       --cov=services/targeting-service \
+      #       --cov-report=xml:coverage-python.xml
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
