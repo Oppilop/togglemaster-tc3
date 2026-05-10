@@ -22,13 +22,13 @@ terraform {
     infisical = {
       source  = "infisical/infisical"
       version = "~> 0.12.1"
+    }
     kubectl = {
       source  = "gavinbunney/kubectl"
       version = ">= 1.14.0"
      }
     }
   }
-}
 
 provider "kubectl" {
   host                   = aws_eks_cluster.eks_cluster.endpoint
