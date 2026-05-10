@@ -27,16 +27,16 @@ spec:
               cpu: "300m"
               memory: "256Mi"
           env:
-            # Host do RDS injetado pelo Terraform (Índice 2)
+            # Host do RDS (Corrigido para camelCase)
             - name: DB_HOST
               valueFrom:
-                config_map_key_ref:
+                configMapKeyRef:
                   name: togglemaster-db-config
                   key: DB_HOST_2
-            # Senha do Infisical injetada pelo Terraform (Índice 2)
+            # Senha do Infisical (Corrigido para camelCase)
             - name: DB_PASSWORD
               valueFrom:
-                secret_key_ref:
+                secretKeyRef:
                   name: togglemaster-db-secret
                   key: password_2
           envFrom:

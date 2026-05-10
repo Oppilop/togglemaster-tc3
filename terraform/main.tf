@@ -263,6 +263,7 @@ resource "kubectl_manifest" "jobs" {
   }
 
   yaml_body = each.value # Aqui mudou de 'manifest' para 'yaml_body'
+  wait_for_rollout = false
 
   depends_on = [
     aws_eks_node_group.node_group,
