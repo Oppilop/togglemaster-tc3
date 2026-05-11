@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   lint:
-    name: Code Quality (Linter)
+    name: Linter
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -24,12 +24,13 @@ jobs:
           go-version: '1.22'
 
       - name: Lint Go Services
-        # O golangci-lint-action v6 suporta varrer subdiretórios se você
-        # não definir um 'working-directory' fixo e usar o argumento ./services/...
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          args: --timeout=5m ./services/...
+          # Força o linter a procurar em todos os subdiretórios que tenham código Go
+          args: --timeout=5m ./services/auth-service/... ./services/evaluation-service/...
+          # Importante: se você tiver um go.mod na raiz, mantenha. 
+          # Se não tiver, o linter pode precisar desse help nos args.
 
       # --- LINT PARA PYTHON (Serviços: analytics, flag, targeting) ---
       - name: Setup Python
@@ -40,16 +41,31 @@ jobs:
       - name: Run Python Lint
         run: |
           pip install flake8
-          echo "Iniciando linting de serviços Python em services/..."
-          
-          # Loop para encontrar diretórios que contenham arquivos .py
-          # e rodar o flake8 neles individualmente
           for dir in services/*-service; do
             if [ -d "$dir" ] && ls "$dir"/*.py >/dev/null 2>&1; then
-              echo "Checking $dir..."
               flake8 "$dir" --count --max-line-length=127 --statistics || exit 1
             fi
           done
+
+      # 2. O próximo job precisa do "needs: lint"
+    sonar_and_trivy:
+      name: Security Analysis
+      needs: lint # <--- ISSO CONECTA OS JOBS NO GRÁFICO
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout Code
+          uses: actions/checkout@v4
+        # ... seus steps de Sonar e Trivy IaC ...
+
+    # 3. O deploy depende do sucesso dos anteriores
+    terraform_deploy:
+      name: Terraform and Deploy
+      needs: sonar_and_trivy # <--- CONTINUA A CORRENTE
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout Code
+          uses: actions/checkout@v4
+        # ... seus steps de Terraform ...
 
   # ─────────────────────────────────────────────────
   # JOB 1: SonarCloud — SAST + Code Quality
