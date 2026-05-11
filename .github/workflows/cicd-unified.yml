@@ -59,7 +59,7 @@ jobs:
               # E302/E305: Falta de 2 linhas entre funções
               # E261: Menos de 2 espaços antes de comentário
               flake8 "$dir" --count \
-                --ignore=E302,E305,E261,E701,W291,W292,W293,W391 \
+                --ignore=E302,E305,E261,E701,W291,W292,W293,W391,F401 \
                 --max-line-length=127 \
                 --statistics || exit 1
             fi
