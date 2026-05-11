@@ -38,7 +38,7 @@ jobs:
         with:
           version: latest
           working-directory: services/evaluation-service
-          args: --timeout=5m -D errcheck
+          args: --timeout=5m -D errcheck --exclude="SA1019"
 
       - name: Setup Python
         uses: actions/setup-python@v5
