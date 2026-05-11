@@ -47,25 +47,25 @@ jobs:
             fi
           done
 
-      # 2. O próximo job precisa do "needs: lint"
-    sonar_and_trivy:
-      name: Security Analysis
-      needs: lint # <--- ISSO CONECTA OS JOBS NO GRÁFICO
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout Code
-          uses: actions/checkout@v4
-        # ... seus steps de Sonar e Trivy IaC ...
+    # 2. O próximo job precisa do "needs: lint"
+  sonar_and_trivy:
+    name: Security Analysis
+    needs: lint # <--- ISSO CONECTA OS JOBS NO GRÁFICO
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      # ... seus steps de Sonar e Trivy IaC ...
 
-    # 3. O deploy depende do sucesso dos anteriores
-    terraform_deploy:
-      name: Terraform and Deploy
-      needs: sonar_and_trivy # <--- CONTINUA A CORRENTE
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout Code
-          uses: actions/checkout@v4
-        # ... seus steps de Terraform ...
+  # 3. O deploy depende do sucesso dos anteriores
+  terraform_deploy:
+    name: Terraform and Deploy
+    needs: sonar_and_trivy # <--- CONTINUA A CORRENTE
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      # ... seus steps de Terraform ...
 
   # ─────────────────────────────────────────────────
   # JOB 1: SonarCloud — SAST + Code Quality
