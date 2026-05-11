@@ -10,6 +10,47 @@ permissions:
   actions: read
 
 jobs:
+  lint:
+    name: Code Quality (Linter)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # --- LINT PARA GO (Serviços: auth-service, evaluation-service) ---
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Lint Go Services
+        # O golangci-lint-action v6 suporta varrer subdiretórios se você
+        # não definir um 'working-directory' fixo e usar o argumento ./services/...
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m ./services/...
+
+      # --- LINT PARA PYTHON (Serviços: analytics, flag, targeting) ---
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Run Python Lint
+        run: |
+          pip install flake8
+          echo "Iniciando linting de serviços Python em services/..."
+          
+          # Loop para encontrar diretórios que contenham arquivos .py
+          # e rodar o flake8 neles individualmente
+          for dir in services/*-service; do
+            if [ -d "$dir" ] && ls "$dir"/*.py >/dev/null 2>&1; then
+              echo "Checking $dir..."
+              flake8 "$dir" --count --max-line-length=127 --statistics || exit 1
+            fi
+          done
+
   # ─────────────────────────────────────────────────
   # JOB 1: SonarCloud — SAST + Code Quality
   # ─────────────────────────────────────────────────
