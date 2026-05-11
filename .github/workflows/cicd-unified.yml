@@ -24,12 +24,21 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+          cache: false
 
-      - name: Lint Go Services
+      - name: Lint Auth Service
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          args: --timeout=5m ./services/auth-service/... ./services/evaluation-service/...
+          working-directory: services/auth-service
+          args: --timeout=5m
+
+      - name: Lint Evaluation Service
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: services/evaluation-service
+          args: --timeout=5m
 
       - name: Setup Python
         uses: actions/setup-python@v5
