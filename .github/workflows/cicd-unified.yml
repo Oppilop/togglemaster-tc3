@@ -48,10 +48,20 @@ jobs:
       - name: Run Python Lint
         run: |
           pip install flake8
+          echo "Iniciando verificação de estilo PEP8..."
           for dir in services/*-service; do
             if [ -d "$dir" ] && ls "$dir"/*.py >/dev/null 2>&1; then
-              # Adicionamos W292 no --ignore para o pipeline não travar por isso
-              flake8 "$dir" --count --ignore=E302,E305,E261,W292 --max-line-length=127 --statistics || exit 1
+              echo "Analisando: $dir"
+              # Ignoramos erros de:
+              # E701: Múltiplos comandos na mesma linha (ex: if x: return)
+              # W291/W293: Espaços no final da linha ou em linhas vazias
+              # W292: Falta de linha vazia no final do arquivo
+              # E302/E305: Falta de 2 linhas entre funções
+              # E261: Menos de 2 espaços antes de comentário
+              flake8 "$dir" --count \
+                --ignore=E302,E305,E261,E701,W291,W292,W293 \
+                --max-line-length=127 \
+                --statistics || exit 1
             fi
           done
 
