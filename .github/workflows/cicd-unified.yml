@@ -10,14 +10,16 @@ permissions:
   actions: read
 
 jobs:
+  # ─────────────────────────────────────────────────
+  # ETAPA 1: QUALIDADE DE CÓDIGO (Linter)
+  # ─────────────────────────────────────────────────
   lint:
-    name: Linter
+    name: Code Quality (Linter)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- LINT PARA GO (Serviços: auth-service, evaluation-service) ---
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -27,12 +29,8 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          # Força o linter a procurar em todos os subdiretórios que tenham código Go
           args: --timeout=5m ./services/auth-service/... ./services/evaluation-service/...
-          # Importante: se você tiver um go.mod na raiz, mantenha. 
-          # Se não tiver, o linter pode precisar desse help nos args.
 
-      # --- LINT PARA PYTHON (Serviços: analytics, flag, targeting) ---
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -47,95 +45,31 @@ jobs:
             fi
           done
 
-    # 2. O próximo job precisa do "needs: lint"
-  sonar_and_trivy:
-    name: Security Analysis
-    needs: lint # <--- ISSO CONECTA OS JOBS NO GRÁFICO
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      # ... seus steps de Sonar e Trivy IaC ...
-
-  # 3. O deploy depende do sucesso dos anteriores
-  terraform_deploy:
-    name: Terraform and Deploy
-    needs: sonar_and_trivy # <--- CONTINUA A CORRENTE
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      # ... seus steps de Terraform ...
-
   # ─────────────────────────────────────────────────
-  # JOB 1: SonarCloud — SAST + Code Quality
+  # ETAPA 2: SEGURANÇA (SonarCloud e Trivy IaC rodando em paralelo)
   # ─────────────────────────────────────────────────
   sonarcloud:
     name: 'SonarCloud SAST'
+    needs: lint  # <--- Agora ele espera o Linter passar
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-      
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
-
-      # - name: Install Dependencies and Run Tests
-      #   run: |
-      #     # 1. Testes Go (Entrando em cada diretório)
-      #     echo "Rodando testes Go..."
-          
-      #     echo "Testing Auth..."
-      #     cd services/auth-service && go test ./... -coverprofile=../../coverage-auth.out && cd ../..
-          
-      #     echo "Testing Evaluation..."
-      #     cd services/evaluation-service && go test ./... -coverprofile=../../coverage-eval.out && cd ../..
-
-      #     # Unificar os reports para o Sonar (opcional, ou aponte os dois no sonar-project.properties)
-      #     cat coverage-auth.out > coverage-go.out
-      #     tail -n +2 coverage-eval.out >> coverage-go.out
-
-      #     # 2. Testes Python
-      #     echo "Rodando testes Python..."
-      #     python -m pip install pytest pytest-cov
-      #     for s in "analytics-service" "flag-service" "targeting-service"; do
-      #       if [ -f "services/$s/requirements.txt" ]; then
-      #         pip install -r services/$s/requirements.txt
-      #       fi
-      #     done
-      #     pytest services/analytics-service services/flag-service services/targeting-service \
-      #       --cov=services/analytics-service \
-      #       --cov=services/flag-service \
-      #       --cov=services/targeting-service \
-      #       --cov-report=xml:coverage-python.xml
-
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # ─────────────────────────────────────────────────
-  # JOB 2: Trivy — IaC + Dockerfile
-  # ─────────────────────────────────────────────────
   trivy-iac:
     name: 'Trivy IaC + Dockerfile'
+    needs: lint  # <--- Também espera o Linter
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Run Trivy IaC Scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -146,37 +80,32 @@ jobs:
           exit-code: '0'
 
   # ─────────────────────────────────────────────────
-  # JOB 3: Trivy — Container Scan (Loop para 5 imagens)
+  # ETAPA 3: SEGURANÇA DE ARTEFATO (Container Scan)
   # ─────────────────────────────────────────────────
   trivy-container:
     name: 'Trivy Container Scan'
     runs-on: ubuntu-latest
-    needs: [sonarcloud, trivy-iac]
+    needs: [sonarcloud, trivy-iac] # Espera os dois scans de segurança terminarem
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Build and Scan All Images
         run: |
           SERVICES=("auth" "evaluation" "analytics" "flag" "targeting")
-          
-          # Instala Trivy localmente
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-          
           for S in "${SERVICES[@]}"; do
             IMAGE_NAME="togglemaster-$S:${{ github.sha }}"
-            echo "Building and Scanning: $IMAGE_NAME"
-            
             docker build -t $IMAGE_NAME ./services/${S}-service
             trivy image --severity CRITICAL,HIGH --exit-code 0 --format table $IMAGE_NAME
           done
 
   # ─────────────────────────────────────────────────
-  # JOB 4: Deploy (Terraform + ECR Push)
+  # ETAPA 4: DEPLOY (Terraform + ECR)
   # ─────────────────────────────────────────────────
   terraform-and-deploy:
+    name: 'Terraform and Deploy'
     runs-on: ubuntu-latest
-    needs: [trivy-container] # Garante que só faz deploy se os scans passarem
+    needs: [trivy-container] # Só inicia o deploy se a imagem for segura
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -189,7 +118,6 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
           
-      # 2. INSTALA O TERRAFORM 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -202,14 +130,9 @@ jobs:
           TF_VAR_infisical_client_secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
         run: |
           terraform init
-          
-          # Passo 1: Cria primeiro a base (VPC e Cluster EKS)
-          # Isso garante que o endpoint do cluster exista antes do Terraform tentar configurar o provider K8s
           terraform apply -target=module.vpc -target=aws_eks_cluster.eks_cluster -target=aws_eks_node_group.node_group -auto-approve
-          
-          # Passo 2: Aplica o restante (RDS, ElastiCache, Namespaces, Jobs e Services)
-          # Agora o provider kubernetes conseguirá se conectar sem erro
           terraform apply -auto-approve
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -230,5 +153,5 @@ jobs:
       - name: Restart Deployments
         run: |
           for ns in auth flag targeting evaluation analytics; do
-            kubectl rollout restart deployment -n ${ns}-namespace || echo "Namespace $ns não tem deployments ativos ainda"
+            kubectl rollout restart deployment -n ${ns}-namespace || echo "Namespace $ns ainda sem deployments"
           done
