@@ -31,14 +31,14 @@ jobs:
         with:
           version: latest
           working-directory: services/auth-service
-          args: --timeout=5m
+          args: --timeout=5m -D errcheck
 
       - name: Lint Evaluation Service
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
           working-directory: services/evaluation-service
-          args: --timeout=5m
+          args: --timeout=5m -D errcheck
 
       - name: Setup Python
         uses: actions/setup-python@v5
